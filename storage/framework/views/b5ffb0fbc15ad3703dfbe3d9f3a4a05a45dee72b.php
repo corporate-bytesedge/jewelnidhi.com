@@ -1,0 +1,3 @@
+<?php if(!empty($middleBanner)): ?> <a href="<?php echo e($middleBanner->link_one); ?>"> <div class="img-banner-sec" data-aos="fade-up" data-aos-once="true"> <?php if(isset($middleBanner->image_one)): ?> <?php 
+                                $imagetwopath = public_path().'/storage/middle-banner/'.$middleBanner->image_one;
+                            ?> <?php if(file_exists($imagetwopath)): ?> <img src="<?php echo e(asset('storage/middle-banner/'.$middleBanner->image_one)); ?>" > <?php else: ?> <img src="<?php echo e(asset('img/noimage.png')); ?> " > <?php endif; ?> <?php endif; ?> </div> </a> <?php endif; ?>

@@ -1,0 +1,1 @@
+<div class="form-group"> <?php echo Form::label('country', __('Country:')); ?> <select name="country" id="country" class="form-control"> <option value="India">India</option> </select> </div>

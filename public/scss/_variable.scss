@@ -1,0 +1,90 @@
+@import url('https://fonts.googleapis.com/css2?family=Muli:wght@200;300;400;500;600;700&family=Sail&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Domine:wght@400;700&display=swap');
+@font-face {
+    font-family: 'apple_chanceryitalic';
+    src: url('/fonts/apple_chancery_italic-webfont.woff2') format('woff2'), url('/fonts/apple_chancery_italic-webfont.woff') format('woff'), url('/fonts/apple_chancery_italic-webfont.svg#apple_chanceryitalic') format('svg');
+    font-weight: normal;
+    font-style: normal;
+}
+
+$dark-grey: #424244;
+//$gold: #D3A012;
+$gold: #DAA520;
+$white: #fff;
+$black: #000;
+$fs-11: 11px;
+$fs-12: 12px;
+$fs-14: 14px;
+$fs-16: 16px;
+$fs-18: 18px;
+$fs-20: 20px;
+$fs-24: 24px;
+$fs-30: 30px;
+$fs-36: 36px;
+$fw-700: 700;
+$fw-600: 600;
+$fw-600: 600;
+$fw-500: 500;
+$fw-400: 400;
+$primary-font-family:'Muli',
+sans-serif;
+$secondary-font-family:'Sail',
+cursive;
+$heading-font-family:'Domine',
+serif;
+body {
+    padding: 0px;
+    margin: 0px;
+    font-family: $primary-font-family;
+    font-size: $fs-14;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    /* Chrome, Safari */
+    text-rendering: optimizeLegibility;
+    /* Firefox */
+    color: $white;
+    font-weight: $fw-400;
+    background: $dark-grey;
+}
+
+img {
+    max-width: 100%;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+    margin: 0;
+    word-break: break-word;
+    font-family: $heading-font-family;
+}
+
+p {
+    word-break: break-word;
+}
+
+button,
+input,
+optgroup,
+select,
+textarea {
+    font-family: $primary-font-family;
+}
+
+button:focus {
+    outline: none !important;
+}
+
+ul,
+li {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+a:hover {
+    text-decoration: none;
+}
