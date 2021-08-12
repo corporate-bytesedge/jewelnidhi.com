@@ -34,8 +34,12 @@ class FrontController extends Controller
      //dd($topcategories);
         
         $products = Product::orderBy('id', 'desc')->where('is_active', 1)->where('location_id', $location_id)->get();
-        $featured_products = $products->sortByDesc(function($product) {return $product->reviews->where('approved', 1)->where('rating', '!=', null)->avg('rating');})->take(10);
+		
+        //$featured_products = $products->sortByDesc(function($product) {return $product->reviews->where('approved', 1)->where('rating', '!=', null)->avg('rating');})->take(10);
+		\DB::connection()->enableQueryLog();
         $best_selling_products = $products->where('best_seller',1)->sortByDesc(function($product) {return $product->sales;})->take(10);
+		$debugQry = \DB::getQueryLog();
+		//print_r($debugQry);
          
         $products = $products->take(20);
         $brands = Brand::where('is_active', 1)->where('location_id', $location_id)->where('show_in_slider', true)->orderby('priority', 'asc')->get();
@@ -104,7 +108,7 @@ class FrontController extends Controller
 
         $collections = Collection::get()->first();
          
-        return view('front.index', compact('topcategories','products', 'featured_products', 'best_selling_products', 'brands',  'deals', 'banners_main_slider', 'banners_right_side', 'banners_below_main_slider', 'banners_below_main_slider_2_images_layout', 'banners_below_main_slider_3_images_layout', 'sections_above_main_slider', 'sections_below_main_slider', 'sections_above_deal_slider', 'sections_below_deal_slider', 'sections_above_footer', 'sections_above_side_banners', 'sections_below_side_banners', 'testimonials', 'default_photo','middleBanner','collections','certifications'));
+        return view('front.index', compact('topcategories','products', 'best_selling_products', 'brands',  'deals', 'banners_main_slider', 'banners_right_side', 'banners_below_main_slider', 'banners_below_main_slider_2_images_layout', 'banners_below_main_slider_3_images_layout', 'sections_above_main_slider', 'sections_below_main_slider', 'sections_above_deal_slider', 'sections_below_deal_slider', 'sections_above_footer', 'sections_above_side_banners', 'sections_below_side_banners', 'testimonials', 'default_photo','middleBanner','collections','certifications'));
     }
 
     public function products(Request $request, $type = null, $slug = null) {
@@ -1090,7 +1094,8 @@ class FrontController extends Controller
 
     public function filterMetal(Request $request) {
 
-        
+        //echo "hiiiiii";
+		//\DB::connection()->enableQueryLog();
         $category = Category::with('category')->where('slug', $request->segment(2))->where('is_active', 1)->firstOrFail();
          
         $metal =  Product::with('category')->where(function ($query) {
@@ -1101,17 +1106,29 @@ class FrontController extends Controller
      
         
 
-        $products = Product::distinct('product_group')->whereHas('specificationTypes', function ($query) use($category,$shopbyMetal)  {
+         /*$products = Product::distinct('product_group')->whereHas('specificationTypes', function ($query) use($category,$shopbyMetal)  {
             $query->where('product_specification_type.value', 'like', strtolower($shopbyMetal->name))->where('name','LIKE','%metal%');
         })->whereHas('product_category_styles', function($query) use($category) {
             $query->where('category_id',$category->id);
         })->where(function ($query) {
             $query->where('product_group_default', 1)->where('product_group', 1)->orWhere('product_group',  null);
-          })->where('is_active','1')->where('is_approved','1')->where('category_id',$category->id)->get(); 
+          })->where('is_active','1')->where('is_approved','1')->where('category_id',$category->id)->get();  */
+		  
+		  $products = Product::distinct('product_group')
+		  ->leftjoin('product_specification_type', 'product_specification_type.product_id', '=', 'products.id')
+		  ->leftjoin('product_category_styles', 'product_category_styles.product_id', '=', 'products.id')
+		  ->where('product_specification_type.value', 'like', strtolower($shopbyMetal->name))
+		  ->where('product_specification_type.specification_type_id', '42')
+		  ->where('product_category_styles.category_id', $category->id)
+		  ->where(function ($query) {
+            $query->where('products.product_group_default', 1)->where('products.product_group', 1)->orWhere('products.product_group',  null);
+          })->where('products.is_active','1')->where('products.is_approved','1')->where('products.category_id',$category->id)->get();
+
 
         $pagination_count = config('settings.pagination_count') ? config('settings.pagination_count') : 8;
-        
+        //echo $pagination_count;
         $products = $products->paginate($pagination_count);
+		$max_page = $products->total() / $pagination_count;
         
         $banners = $category->banners()->where('is_active', 1)->get();
         $sections = $category->sections()->where('is_active', 1)->get();
@@ -1151,13 +1168,25 @@ class FrontController extends Controller
 
         if($category->category_id=='0') { 
 
-            $maleProduct =  Product::distinct('product_group')->whereHas('specificationTypes', function ($query) use($category)  {
+            /* $maleProduct =  Product::distinct('product_group')->whereHas('specificationTypes', function ($query) use($category)  {
                 $query->where('product_specification_type.value', 'like', '%m%')->where('name','LIKE','%Gender%');
             })->whereHas('product_category_styles', function($query) use($category) {
                 $query->where('category_id',$category->id);
             })->where(function ($query) {
                 $query->where('product_group_default', 1)->where('product_group', 1)->orWhere('product_group',  null);
-            })->where('is_active','1')->where('is_approved','1')->where('category_id',$category->id)->count();
+            })->where('is_active','1')->where('is_approved','1')->where('category_id',$category->id)->count(); */
+			
+			
+			
+			$maleProduct =  Product::distinct('product_group')
+			->leftjoin('product_specification_type', 'product_specification_type.product_id', '=', 'products.id')
+			->leftjoin('product_category_styles', 'product_category_styles.product_id', '=', 'products.id')
+			->where('product_specification_type.value', 'like', '%m%')
+			->where('product_specification_type.specification_type_id', '11')
+			->where('product_category_styles.category_id', $category->id)
+			->where(function ($query) {
+                $query->where('products.product_group_default', 1)->where('products.product_group', 1)->orWhere('products.product_group',  null);
+            })->where('products.is_active','1')->where('products.is_approved','1')->where('products.category_id',$category->id)->count();
 
          } else {
 
@@ -1176,15 +1205,23 @@ class FrontController extends Controller
          
          if($category->category_id=='0') { 
 
-            $femaleProduct =  Product::distinct('product_group')->whereHas('specificationTypes', function ($query) use($category)  {
+            /* $femaleProduct =  Product::distinct('product_group')->whereHas('specificationTypes', function ($query) use($category)  {
                 $query->where('product_specification_type.value', 'like', '%f%')->where('name','LIKE','%Gender%');
             })->whereHas('product_category_styles', function($query) use($category) {
                 $query->where('category_id',$category->id);
             })->where(function ($query) {
                 $query->where('product_group_default', 1)->where('product_group', 1)->orWhere('product_group',  null);
-              })->where('is_active','1')->where('is_approved','1')->where('category_id',$category->id)->count();
+              })->where('is_active','1')->where('is_approved','1')->where('category_id',$category->id)->count(); */
 
-            
+            $femaleProduct =  Product::distinct('product_group')
+			->leftjoin('product_specification_type', 'product_specification_type.product_id', '=', 'products.id')
+			->leftjoin('product_category_styles', 'product_category_styles.product_id', '=', 'products.id')
+			->where('product_specification_type.value', 'like', '%f%')
+			->where('product_specification_type.specification_type_id', '11')
+			->where('product_category_styles.category_id', $category->id)
+			->where(function ($query) {
+                $query->where('products.product_group_default', 1)->where('products.product_group', 1)->orWhere('products.product_group',  null);
+            })->where('products.is_active','1')->where('products.is_approved','1')->where('products.category_id',$category->id)->count();
             
 
          } else {
@@ -1210,11 +1247,19 @@ class FrontController extends Controller
         
         if($category->category_id=='0') { 
 
-            $offerProduct =  Product::distinct('product_group')->whereHas('product_category_styles', function ($query) use($category)  {
+            /* $offerProduct =  Product::distinct('product_group')->whereHas('product_category_styles', function ($query) use($category)  {
                 $query->where('category_id',$category->id);
             })->where(function ($query) {
                 $query->where('product_group_default', 1)->where('product_group', 1)->orWhere('product_group',  null);
-              })->where('product_discount','<>',false)->where('is_active','1')->where('is_approved','1')->where('category_id',$category->id)->count();
+              })->where('product_discount','<>',false)->where('is_active','1')->where('is_approved','1')->where('category_id',$category->id)->count(); */
+			  
+			  
+			  $offerProduct =  Product::distinct('product_group')
+			  ->leftjoin('product_category_styles', 'product_category_styles.product_id', '=', 'products.id')
+			  ->where('product_category_styles.category_id',$category->id)
+			  ->where(function ($query) {
+                $query->where('products.product_group_default', 1)->where('products.product_group', 1)->orWhere('products.product_group',  null);
+              })->where('products.product_discount','<>',false)->where('products.is_active','1')->where('products.is_approved','1')->where('products.category_id',$category->id)->count();
 
         } else {
 
@@ -1232,13 +1277,23 @@ class FrontController extends Controller
         
         if($category->category_id=='0') {
 
-            $purity_eighteen_carat = Product::whereHas('specificationTypes', function ($query)  {
+            /* $purity_eighteen_carat = Product::whereHas('specificationTypes', function ($query)  {
                 $query->where('value', '18')->where('name','LIKE','%Purity%');
             })->whereHas('product_category_styles', function ($query) use($category)  {
                 $query->where('category_id', $category->id);
             })->where(function ($query) {
                 $query->where('product_group_default', 1)->where('product_group', 1)->orWhere('product_group',  null);
-              })->where('category_id',$category->id)->where('is_active','1')->where('is_approved','1')->get();
+              })->where('category_id',$category->id)->where('is_active','1')->where('is_approved','1')->get(); */
+			  
+			  
+			  $purity_eighteen_carat = Product::leftjoin('product_specification_type', 'product_specification_type.product_id', '=', 'products.id')
+			->leftjoin('product_category_styles', 'product_category_styles.product_id', '=', 'products.id')
+			->where('product_specification_type.value', 'like', '18')
+			->where('product_specification_type.specification_type_id', '9')
+			->where('product_category_styles.category_id', $category->id)
+			->where(function ($query) {
+                $query->where('products.product_group_default', 1)->where('products.product_group', 1)->orWhere('products.product_group',  null);
+            })->where('products.is_active','1')->where('products.is_approved','1')->where('products.category_id', $category->id)->get();
 
         } else {
 
@@ -1254,13 +1309,23 @@ class FrontController extends Controller
         //dd($purity_eighteen_carat);
         if($category->category_id=='0') {
 
-            $purity_fourteen_carat = Product::whereHas('specificationTypes', function ($query)  {
+            /* $purity_fourteen_carat = Product::whereHas('specificationTypes', function ($query)  {
                 $query->where('value', '14')->where('name','LIKE','%Purity%');
             })->whereHas('product_category_styles', function ($query) use($category)  {
                 $query->where('category_id', $category->id);
             })->where(function ($query) {
                 $query->where('product_group_default', 1)->where('product_group', 1)->orWhere('product_group',  null);
-              })->where('category_id',$category->id)->where('is_active','1')->where('is_approved','1')->get();
+              })->where('category_id',$category->id)->where('is_active','1')->where('is_approved','1')->get(); */
+			  
+			  
+			  $purity_fourteen_carat = Product::leftjoin('product_specification_type', 'product_specification_type.product_id', '=', 'products.id')
+			->leftjoin('product_category_styles', 'product_category_styles.product_id', '=', 'products.id')
+			->where('product_specification_type.value', 'like', '14')
+			->where('product_specification_type.specification_type_id', '9')
+			->where('product_category_styles.category_id', $category->id)
+			->where(function ($query) {
+                $query->where('products.product_group_default', 1)->where('products.product_group', 1)->orWhere('products.product_group',  null);
+            })->where('products.is_active','1')->where('products.is_approved','1')->where('products.category_id', $category->id)->get();
 
         } else {
             $purity_fourteen_carat = Product::whereHas('specificationTypes', function ($query)  {
@@ -1274,13 +1339,22 @@ class FrontController extends Controller
         
         if($category->category_id=='0') {
 
-            $purity_twenty_two_carat = Product::whereHas('specificationTypes', function ($query)  {
+            /* $purity_twenty_two_carat = Product::whereHas('specificationTypes', function ($query)  {
                 $query->where('value', '22')->where('name','LIKE','%Purity%');
             })->whereHas('product_category_styles', function ($query) use($category)  {
                 $query->where('category_id', $category->id);
             })->where(function ($query) {
                 $query->where('product_group_default', 1)->where('product_group', 1)->orWhere('product_group',  null);
-              })->where('category_id',$category->id)->where('is_active','1')->where('is_approved','1')->get();
+              })->where('category_id',$category->id)->where('is_active','1')->where('is_approved','1')->get(); */
+			  
+			  $purity_twenty_two_carat = Product::leftjoin('product_specification_type', 'product_specification_type.product_id', '=', 'products.id')
+			->leftjoin('product_category_styles', 'product_category_styles.product_id', '=', 'products.id')
+			->where('product_specification_type.value', 'like', '22')
+			->where('product_specification_type.specification_type_id', '9')
+			->where('product_category_styles.category_id', $category->id)
+			->where(function ($query) {
+                $query->where('products.product_group_default', 1)->where('products.product_group', 1)->orWhere('products.product_group',  null);
+            })->where('products.is_active','1')->where('products.is_approved','1')->where('products.category_id', $category->id)->get();
 
         } else {
 
@@ -1296,11 +1370,23 @@ class FrontController extends Controller
 
         if($category->category_id=='0') {
 
-            $metal =  Product::with('category')->whereHas('product_category_styles', function ($query) use($category)  {
+            /* $metal =  Product::with('category')->whereHas('product_category_styles', function ($query) use($category)  {
                 $query->where('category_id', $category->id);
             })->where(function ($query) {
                 $query->where('product_group_default', 1)->where('product_group', 1)->orWhere('product_group',  null);
-              })->where('is_active','1')->where('category_id',$category->id)->where('is_approved','1')->get();
+              })->where('is_active','1')->where('category_id',$category->id)->where('is_approved','1')->get(); */
+			  
+			  
+			  
+			$metal = Product::with('category')
+			->leftjoin('product_category_styles', 'product_category_styles.product_id', '=', 'products.id')
+			->where('product_category_styles.category_id', $category->id)
+			->where(function ($query) {
+                $query->where('products.product_group_default', 1)->where('products.product_group', 1)->orWhere('products.product_group',  null);
+              })->where('products.is_active','1')->where('products.category_id',$category->id)->where('products.is_approved','1')->get();
+			  
+			  
+			  
 
         } else {
 
@@ -1310,30 +1396,49 @@ class FrontController extends Controller
                 $query->where('product_group_default', 1)->where('product_group', 1)->orWhere('product_group',  null);
               })->where('is_active','1')->where('is_approved','1')->where('category_id',$category->category_id)->get();
         }
-          
-       return view('front.category', compact('products', 'category','banners_main_slider', 'banners_below_filters', 'banners_below_main_slider', 'banners_below_main_slider_2_images_layout', 'banners_below_main_slider_3_images_layout', 'sections_above_main_slider', 'sections_below_main_slider', 'sections_above_side_banners', 'sections_below_side_banners', 'sections_above_footer','maleProduct','femaleProduct','purity_eighteen_carat','purity_fourteen_carat','purity_twenty_two_carat','offerProduct','metal'));
+          //$debugQry = \DB::getQueryLog();
+		//print_r($debugQry);
+		
+		
+		if ($request->ajax() && !empty($request->all()) ) {
+                
+                $view = view('front.ajaxcategorypagination',compact('products'))->render();
+                return response()->json(['html'=>$view]);
+            }
+			
+       return view('front.category', compact('products', 'max_page', 'category','banners_main_slider', 'banners_below_filters', 'banners_below_main_slider', 'banners_below_main_slider_2_images_layout', 'banners_below_main_slider_3_images_layout', 'sections_above_main_slider', 'sections_below_main_slider', 'sections_above_side_banners', 'sections_below_side_banners', 'sections_above_footer','maleProduct','femaleProduct','purity_eighteen_carat','purity_fourteen_carat','purity_twenty_two_carat','offerProduct','metal'));
 
          
         
     }
 
     public function filterPrice(Request $request) {
-         
+         \DB::connection()->enableQueryLog();
         $category = Category::with('category')->where('slug', $request->segment(2))->where('is_active', 1)->firstOrFail();
         $plain = 0;
         $stone = 0;
         $beads = 0;
         if($request->segment(3)=='men') {
 
-            $products =  Product::distinct('product_group')->whereHas('specificationTypes', function ($query) use($category)  {
+            /* $products =  Product::distinct('product_group')->whereHas('specificationTypes', function ($query) use($category)  {
                 $query->where('product_specification_type.value', 'like', 'm%')->where('name','LIKE','%Gender%');
             })->whereHas('product_category_styles', function($query) use($category) {
                 $query->where('category_id',$category->id);
             })->where(function ($query) {
                 $query->where('product_group_default', 1)->where('product_group', 1)->orWhere('product_group',  null);
-            })->where('is_active','1')->where('is_approved','1')->where('category_id',$category->id)->orderBy('id','DESC')->get();
+            })->where('is_active','1')->where('is_approved','1')->where('category_id',$category->id)->orderBy('id','DESC')->get(); */
+			
+			$products =  Product::distinct('product_group')
+			->leftjoin('product_specification_type', 'product_specification_type.product_id', '=', 'products.id')
+			->leftjoin('product_category_styles', 'product_category_styles.product_id', '=', 'products.id')
+			->where('product_specification_type.value', 'like', 'm%')
+			->where('product_specification_type.specification_type_id', '11')
+			->where('product_category_styles.category_id',$category->id)
+			->where(function ($query) {
+                $query->where('products.product_group_default', 1)->where('products.product_group', 1)->orWhere('products.product_group',  null);
+            })->where('products.is_active','1')->where('products.is_approved','1')->where('products.category_id',$category->id)->orderBy('products.id','DESC')->get();
 
-            $plain = Product::distinct('product_group')->whereHas('specificationTypes', function ($query) use($category)  {
+            /* $plain = Product::distinct('product_group')->whereHas('specificationTypes', function ($query) use($category)  {
                 $query->where('product_specification_type.value', 'like', 'p%')->where('name','LIKE','%Type%');
             })->whereHas('specificationTypes', function($query) use($category) {
                 $query->where('product_specification_type.value', 'like', '%m%')->where('name','LIKE','%Gender%');;
@@ -1341,9 +1446,23 @@ class FrontController extends Controller
                 $query->where('category_id', $category->id);
             })->where(function ($query) {
                 $query->where('product_group_default', 1)->where('product_group', 1)->orWhere('product_group',  null);
-            })->where('is_active','1')->where('is_approved','1')->where('category_id', $category->id)->count();
+            })->where('is_active','1')->where('is_approved','1')->where('category_id', $category->id)->count(); */
+			
+			$plain = Product::distinct('product_group')
+			->leftjoin('product_specification_type', 'product_specification_type.product_id', '=', 'products.id')
+			->leftjoin('product_category_styles', 'product_category_styles.product_id', '=', 'products.id')
+			->where('product_specification_type.value', 'like', 'p%')
+			->where('product_specification_type.specification_type_id', '20')
+			->where('product_specification_type.value', 'like', 'm%')
+			->where('product_specification_type.specification_type_id', '11')
+			->where('product_category_styles.category_id',$category->id)
+			->where(function ($query) {
+                $query->where('products.product_group_default', 1)->where('products.product_group', 1)->orWhere('products.product_group',  null);
+            })->where('products.is_active','1')->where('products.is_approved','1')->where('products.category_id', $category->id)->count();
+			
+			
             
-            $stone = Product::distinct('product_group')->whereHas('specificationTypes', function ($query) use($category)  {
+            /* $stone = Product::distinct('product_group')->whereHas('specificationTypes', function ($query) use($category)  {
                 $query->where('product_specification_type.value', 'like', 's%')->where('name','LIKE','%Type%');
             })->whereHas('specificationTypes', function($query) use($category) {
                 $query->where('product_specification_type.value', 'like', 'm%')->where('name','LIKE','%Gender%');
@@ -1351,9 +1470,21 @@ class FrontController extends Controller
                 $query->where('category_id', $category->id);
             })->where(function ($query) {
                 $query->where('product_group_default', 1)->where('product_group', 1)->orWhere('product_group',  null);
-            })->where('is_active','1')->where('is_approved','1')->where('category_id', $category->id)->count();
+            })->where('is_active','1')->where('is_approved','1')->where('category_id', $category->id)->count(); */
+			
+			$stone = Product::distinct('product_group')
+			->leftjoin('product_specification_type', 'product_specification_type.product_id', '=', 'products.id')
+			->leftjoin('product_category_styles', 'product_category_styles.product_id', '=', 'products.id')
+			->where('product_specification_type.value', 'like', 's%')
+			->where('product_specification_type.specification_type_id', '20')
+			->where('product_specification_type.value', 'like', 'm%')
+			->where('product_specification_type.specification_type_id', '11')
+			->where('product_category_styles.category_id',$category->id)
+			->where(function ($query) {
+                $query->where('products.product_group_default', 1)->where('products.product_group', 1)->orWhere('products.product_group',  null);
+            })->where('products.is_active','1')->where('products.is_approved','1')->where('products.category_id', $category->id)->count();
 
-            $beads = Product::distinct('product_group')->whereHas('specificationTypes', function ($query) use($category)  {
+            /* $beads = Product::distinct('product_group')->whereHas('specificationTypes', function ($query) use($category)  {
                 $query->where('product_specification_type.value', 'like', 'b%')->where('name','LIKE','%Type%');
             })->whereHas('specificationTypes', function($query) use($category) {
                 $query->where('product_specification_type.value', 'like', 'm%')->where('name','LIKE','%Gender%');
@@ -1361,19 +1492,41 @@ class FrontController extends Controller
                 $query->where('category_id', $category->id);
             })->where(function ($query) {
                 $query->where('product_group_default', 1)->where('product_group', 1)->orWhere('product_group',  null);
-            })->where('is_active','1')->where('is_approved','1')->where('category_id', $category->id)->count();
+            })->where('is_active','1')->where('is_approved','1')->where('category_id', $category->id)->count(); */
+			
+			$beads = Product::distinct('product_group')
+			->leftjoin('product_specification_type', 'product_specification_type.product_id', '=', 'products.id')
+			->leftjoin('product_category_styles', 'product_category_styles.product_id', '=', 'products.id')
+			->where('product_specification_type.value', 'like', 'b%')
+			->where('product_specification_type.specification_type_id', '20')
+			->where('product_specification_type.value', 'like', 'm%')
+			->where('product_specification_type.specification_type_id', '11')
+			->where('product_category_styles.category_id',$category->id)
+			->where(function ($query) {
+                $query->where('products.product_group_default', 1)->where('products.product_group', 1)->orWhere('products.product_group',  null);
+            })->where('products.is_active','1')->where('products.is_approved','1')->where('products.category_id', $category->id)->count();
 
         } elseif($request->segment(3)=='women') {
 
-            $products =  Product::distinct('product_group')->whereHas('specificationTypes', function ($query) use($category)  {
+            /* $products =  Product::distinct('product_group')->whereHas('specificationTypes', function ($query) use($category)  {
                 $query->where('product_specification_type.value', 'like', 'f%')->where('name','LIKE','%Gender%');
             })->whereHas('product_category_styles', function($query) use($category) {
                 $query->where('category_id',$category->id);
             })->where(function ($query) {
                 $query->where('product_group_default', 1)->where('product_group', 1)->orWhere('product_group',  null);
-            })->where('is_active','1')->where('is_approved','1')->where('category_id',$category->id)->orderBy('id','DESC')->get();
+            })->where('is_active','1')->where('is_approved','1')->where('category_id',$category->id)->orderBy('id','DESC')->get(); */
+			
+			$products =  Product::distinct('product_group')
+			->leftjoin('product_specification_type', 'product_specification_type.product_id', '=', 'products.id')
+			->leftjoin('product_category_styles', 'product_category_styles.product_id', '=', 'products.id')
+			->where('product_specification_type.value', 'like', 'f%')
+			->where('product_specification_type.specification_type_id', '11')
+			->where('product_category_styles.category_id',$category->id)
+			->where(function ($query) {
+                $query->where('products.product_group_default', 1)->where('products.product_group', 1)->orWhere('products.product_group',  null);
+            })->where('products.is_active','1')->where('products.is_approved','1')->where('products.category_id',$category->id)->orderBy('products.id','DESC')->get();
 
-            $plain = Product::distinct('product_group')->whereHas('specificationTypes', function ($query) use($category)  {
+            /* $plain = Product::distinct('product_group')->whereHas('specificationTypes', function ($query) use($category)  {
                 $query->where('product_specification_type.value', 'like', 'p%')->where('name','LIKE','%Type%');
             })->whereHas('specificationTypes', function($query) use($category) {
                 $query->where('product_specification_type.value', 'like', 'f%')->where('name','LIKE','%Gender%');;
@@ -1381,9 +1534,21 @@ class FrontController extends Controller
                 $query->where('category_id', $category->id);
             })->where(function ($query) {
                 $query->where('product_group_default', 1)->where('product_group', 1)->orWhere('product_group',  null);
-            })->where('is_active','1')->where('is_approved','1')->where('category_id', $category->id)->count();
+            })->where('is_active','1')->where('is_approved','1')->where('category_id', $category->id)->count(); */
+			
+			$plain = Product::distinct('product_group')
+			->leftjoin('product_specification_type', 'product_specification_type.product_id', '=', 'products.id')
+			->leftjoin('product_category_styles', 'product_category_styles.product_id', '=', 'products.id')
+			->where('product_specification_type.value', 'like', 'p%')
+			->where('product_specification_type.specification_type_id', '20')
+			->where('product_specification_type.value', 'like', 'f%')
+			->where('product_specification_type.specification_type_id', '11')
+			->where('product_category_styles.category_id',$category->id)
+			->where(function ($query) {
+                $query->where('products.product_group_default', 1)->where('products.product_group', 1)->orWhere('products.product_group',  null);
+            })->where('products.is_active','1')->where('products.is_approved','1')->where('products.category_id', $category->id)->count();
             
-            $stone = Product::distinct('product_group')->whereHas('specificationTypes', function ($query) use($category)  {
+            /* $stone = Product::distinct('product_group')->whereHas('specificationTypes', function ($query) use($category)  {
                 $query->where('product_specification_type.value', 'like', 's%')->where('name','LIKE','%Type%');
             })->whereHas('specificationTypes', function($query) use($category) {
                 $query->where('product_specification_type.value', 'like', 'f%')->where('name','LIKE','%Gender%');
@@ -1391,9 +1556,21 @@ class FrontController extends Controller
                 $query->where('category_id', $category->id);
             })->where(function ($query) {
                 $query->where('product_group_default', 1)->where('product_group', 1)->orWhere('product_group',  null);
-            })->where('is_active','1')->where('is_approved','1')->where('category_id', $category->id)->count();
+            })->where('is_active','1')->where('is_approved','1')->where('category_id', $category->id)->count(); */
+			
+			$stone = Product::distinct('product_group')
+			->leftjoin('product_specification_type', 'product_specification_type.product_id', '=', 'products.id')
+			->leftjoin('product_category_styles', 'product_category_styles.product_id', '=', 'products.id')
+			->where('product_specification_type.value', 'like', 's%')
+			->where('product_specification_type.specification_type_id', '20')
+			->where('product_specification_type.value', 'like', 'f%')
+			->where('product_specification_type.specification_type_id', '11')
+			->where('product_category_styles.category_id',$category->id)
+			->where(function ($query) {
+                $query->where('products.product_group_default', 1)->where('products.product_group', 1)->orWhere('products.product_group',  null);
+            })->where('products.is_active','1')->where('products.is_approved','1')->where('products.category_id', $category->id)->count();
 
-            $beads = Product::distinct('product_group')->whereHas('specificationTypes', function ($query) use($category)  {
+            /* $beads = Product::distinct('product_group')->whereHas('specificationTypes', function ($query) use($category)  {
                 $query->where('product_specification_type.value', 'like', 'b%')->where('name','LIKE','%Type%');
             })->whereHas('specificationTypes', function($query) use($category) {
                 $query->where('product_specification_type.value', 'like', 'f%')->where('name','LIKE','%Gender%');
@@ -1401,20 +1578,42 @@ class FrontController extends Controller
                 $query->where('category_id', $category->id);
             })->where(function ($query) {
                 $query->where('product_group_default', 1)->where('product_group', 1)->orWhere('product_group',  null);
-            })->where('is_active','1')->where('is_approved','1')->where('category_id', $category->id)->count();
+            })->where('is_active','1')->where('is_approved','1')->where('category_id', $category->id)->count(); */
+			
+			$beads = Product::distinct('product_group')
+			->leftjoin('product_specification_type', 'product_specification_type.product_id', '=', 'products.id')
+			->leftjoin('product_category_styles', 'product_category_styles.product_id', '=', 'products.id')
+			->where('product_specification_type.value', 'like', 'b%')
+			->where('product_specification_type.specification_type_id', '20')
+			->where('product_specification_type.value', 'like', 'f%')
+			->where('product_specification_type.specification_type_id', '11')
+			->where('product_category_styles.category_id',$category->id)
+			->where(function ($query) {
+                $query->where('products.product_group_default', 1)->where('products.product_group', 1)->orWhere('products.product_group',  null);
+            })->where('products.is_active','1')->where('products.is_approved','1')->where('products.category_id', $category->id)->count();
 
         } 
         elseif($request->segment(3)=='kids') {
             
-            $products =  Product::distinct('product_group')->whereHas('specificationTypes', function ($query) use($category)  {
+            /* $products =  Product::distinct('product_group')->whereHas('specificationTypes', function ($query) use($category)  {
                 $query->where('product_specification_type.value', 'like', 'k%')->where('name','LIKE','%Gender%');
             })->whereHas('product_category_styles', function($query) use($category) {
                 $query->where('category_id',$category->id);
             })->where(function ($query) {
                 $query->where('product_group_default', 1)->where('product_group', 1)->orWhere('product_group',  null);
-            })->where('is_active','1')->where('is_approved','1')->where('category_id',$category->id)->orderBy('id','DESC')->get();
+            })->where('is_active','1')->where('is_approved','1')->where('category_id',$category->id)->orderBy('id','DESC')->get(); */
+			
+			$products =  Product::distinct('product_group')
+			->leftjoin('product_specification_type', 'product_specification_type.product_id', '=', 'products.id')
+			->leftjoin('product_category_styles', 'product_category_styles.product_id', '=', 'products.id')
+			->where('product_specification_type.value', 'like', 'k%')
+			->where('product_specification_type.specification_type_id', '11')
+			->where('product_category_styles.category_id',$category->id)
+			->where(function ($query) {
+                $query->where('products.product_group_default', 1)->where('products.product_group', 1)->orWhere('products.product_group',  null);
+            })->where('products.is_active','1')->where('products.is_approved','1')->where('products.category_id',$category->id)->orderBy('products.id','DESC')->get();
              
-            $plain = Product::distinct('product_group')->whereHas('specificationTypes', function ($query) use($category)  {
+            /* $plain = Product::distinct('product_group')->whereHas('specificationTypes', function ($query) use($category)  {
                 $query->where('product_specification_type.value', 'like', 'p%')->where('name','LIKE','%Type%');
             })->whereHas('specificationTypes', function($query) use($category) {
                 $query->where('product_specification_type.value', 'like', 'k%')->where('name','LIKE','%Gender%');;
@@ -1422,9 +1621,21 @@ class FrontController extends Controller
                 $query->where('category_id', $category->id);
             })->where(function ($query) {
                 $query->where('product_group_default', 1)->where('product_group', 1)->orWhere('product_group',  null);
-            })->where('is_active','1')->where('is_approved','1')->where('category_id', $category->id)->count();
+            })->where('is_active','1')->where('is_approved','1')->where('category_id', $category->id)->count(); */
+			
+			$plain = Product::distinct('product_group')
+			->leftjoin('product_specification_type', 'product_specification_type.product_id', '=', 'products.id')
+			->leftjoin('product_category_styles', 'product_category_styles.product_id', '=', 'products.id')
+			->where('product_specification_type.value', 'like', 'p%')
+			->where('product_specification_type.specification_type_id', '20')
+			->where('product_specification_type.value', 'like', 'k%')
+			->where('product_specification_type.specification_type_id', '11')
+			->where('product_category_styles.category_id',$category->id)
+			->where(function ($query) {
+                $query->where('products.product_group_default', 1)->where('products.product_group', 1)->orWhere('products.product_group',  null);
+            })->where('products.is_active','1')->where('products.is_approved','1')->where('products.category_id', $category->id)->count();
             
-            $stone = Product::distinct('product_group')->whereHas('specificationTypes', function ($query) use($category)  {
+            /* $stone = Product::distinct('product_group')->whereHas('specificationTypes', function ($query) use($category)  {
                 $query->where('product_specification_type.value', 'like', 's%')->where('name','LIKE','%Type%');
             })->whereHas('specificationTypes', function($query) use($category) {
                 $query->where('product_specification_type.value', 'like', 'k%')->where('name','LIKE','%Gender%');
@@ -1432,9 +1643,21 @@ class FrontController extends Controller
                 $query->where('category_id', $category->id);
             })->where(function ($query) {
                 $query->where('product_group_default', 1)->where('product_group', 1)->orWhere('product_group',  null);
-            })->where('is_active','1')->where('is_approved','1')->where('category_id', $category->id)->count();
+            })->where('is_active','1')->where('is_approved','1')->where('category_id', $category->id)->count(); */
+			
+			$stone = Product::distinct('product_group')
+			->leftjoin('product_specification_type', 'product_specification_type.product_id', '=', 'products.id')
+			->leftjoin('product_category_styles', 'product_category_styles.product_id', '=', 'products.id')
+			->where('product_specification_type.value', 'like', 's%')
+			->where('product_specification_type.specification_type_id', '20')
+			->where('product_specification_type.value', 'like', 'k%')
+			->where('product_specification_type.specification_type_id', '11')
+			->where('product_category_styles.category_id',$category->id)
+			->where(function ($query) {
+                $query->where('products.product_group_default', 1)->where('products.product_group', 1)->orWhere('products.product_group',  null);
+            })->where('products.is_active','1')->where('products.is_approved','1')->where('products.category_id', $category->id)->count();
 
-            $beads = Product::distinct('product_group')->whereHas('specificationTypes', function ($query) use($category)  {
+            /* $beads = Product::distinct('product_group')->whereHas('specificationTypes', function ($query) use($category)  {
                 $query->where('product_specification_type.value', 'like', 'b%')->where('name','LIKE','%Type%');
             })->whereHas('specificationTypes', function($query) use($category) {
                 $query->where('product_specification_type.value', 'like', 'k%')->where('name','LIKE','%Gender%');
@@ -1442,7 +1665,19 @@ class FrontController extends Controller
                 $query->where('category_id', $category->id);
             })->where(function ($query) {
                 $query->where('product_group_default', 1)->where('product_group', 1)->orWhere('product_group',  null);
-            })->where('is_active','1')->where('is_approved','1')->where('category_id', $category->id)->count();
+            })->where('is_active','1')->where('is_approved','1')->where('category_id', $category->id)->count(); */
+			
+			$beads = Product::distinct('product_group')
+			->leftjoin('product_specification_type', 'product_specification_type.product_id', '=', 'products.id')
+			->leftjoin('product_category_styles', 'product_category_styles.product_id', '=', 'products.id')
+			->where('product_specification_type.value', 'like', 'b%')
+			->where('product_specification_type.specification_type_id', '20')
+			->where('product_specification_type.value', 'like', 'k%')
+			->where('product_specification_type.specification_type_id', '11')
+			->where('product_category_styles.category_id',$category->id)
+			->where(function ($query) {
+                $query->where('products.product_group_default', 1)->where('products.product_group', 1)->orWhere('products.product_group',  null);
+            })->where('products.is_active','1')->where('products.is_approved','1')->where('products.category_id', $category->id)->count();
 
 
         }
@@ -1450,11 +1685,19 @@ class FrontController extends Controller
             if($request->segment(3)!='' && $request->segment(4)=='') {
                // $products = Product::where('new_price', '>', $request->segment(3))->where('category_id',$category->id)->get();
                
-                $ProductID =  Product::distinct('product_group')->whereHas('product_category_styles', function ($query) use($category)  {
+                /* $ProductID =  Product::distinct('product_group')->whereHas('product_category_styles', function ($query) use($category)  {
                     $query->where('category_id', $category->id);
                 })->where(function ($query)  {
                     $query->where('product_group_default', 1)->where('product_group', 1)->orWhere('product_group',  null);
-                })->where('is_active','1')->where('is_approved','1')->where('category_id',$category->id)->orderBy('id','DESC')->get();
+                })->where('is_active','1')->where('is_approved','1')->where('category_id',$category->id)->orderBy('id','DESC')->get(); */	
+
+
+				/* $ProductID =  Product::distinct('product_group')
+				->leftjoin('product_category_styles', 'product_category_styles.product_id', '=', 'products.id')
+				->where('product_category_styles.category_id', $category->id)
+				->where(function ($query)  {
+                    $query->where('products.product_group_default', 1)->where('products.product_group', 1)->orWhere('products.product_group',  null);
+                })->where('products.is_active','1')->where('products.is_approved','1')->where('products.category_id',$category->id)->orderBy('products.id','DESC')->get();
                  
                 
                 $productIDArr = [];
@@ -1464,24 +1707,36 @@ class FrontController extends Controller
                         
                         $productIDArr[]= $value->id;
                     }
-                }
+                } */
 
-                $products =  Product::distinct('product_group')->whereHas('product_category_styles', function ($query) use($category,$productIDArr)  {
+                /* $products =  Product::distinct('product_group')->whereHas('product_category_styles', function ($query) use($category,$productIDArr)  {
                     $query->where('category_id', $category->id)->whereIn('product_id',$productIDArr);
                 })->where(function ($query) {
                     $query->where('product_group_default', 1)->where('product_group', 1)->orWhere('product_group',  null);
-                })->where('is_active','1')->where('is_approved','1')->whereRaw('(`product_discount` is null  && `new_price` > '.$request->segment(3).' ) or (`product_discount` is not null  && `new_price` > '.$request->segment(3).' )')->where('category_id',$category->id)->whereIn('id',$productIDArr)->orderBy('id','DESC')->get();
+                })->where('is_active','1')->where('is_approved','1')->whereRaw('(`product_discount` is null  && `new_price` > '.$request->segment(3).' ) or (`product_discount` is not null  && `new_price` > '.$request->segment(3).' )')->where('category_id',$category->id)->whereIn('id',$productIDArr)->orderBy('id','DESC')->get(); */
+				
+				/*$products =  Product::distinct('product_group')->whereHas('product_category_styles', function ($query) use($category)  {
+                    $query->where('category_id', $category->id);
+                })->where(function ($query) {
+                    $query->where('product_group_default', 1)->where('product_group', 1)->orWhere('product_group',  null);
+                })->where('is_active','1')->where('is_approved','1')->whereRaw('(`product_discount` is null  && `old_price` > '.$request->segment(3).' ) or (`product_discount` is not null  && `new_price` > '.$request->segment(3).' )')->where('category_id',$category->id)->orderBy('id','DESC')->get(); */
+				
+				 $products =  Product::distinct('product_group')
+				->leftjoin('product_category_styles', 'product_category_styles.product_id', '=', 'products.id')
+				->where('product_category_styles.category_id', $category->id)
+				->where(function ($query) {
+                    $query->where('products.product_group_default', 1)->where('products.product_group', 1)->orWhere('products.product_group',  null);
+                })->where('products.is_active','1')->where('products.is_approved','1')->whereRaw('(products.product_discount is null  && products.old_price > '.$request->segment(3).' ) or (products.product_discount is not null  && products.new_price > '.$request->segment(3).' )')->where('products.category_id',$category->id)->orderBy('products.id','DESC')->get();
                 
             } else {
                 
                  
-                $ProductID =  Product::distinct('product_group')->whereHas('product_category_styles', function ($query) use($category)  {
+                 /* $ProductID =  Product::distinct('product_group')->whereHas('product_category_styles', function ($query) use($category)  {
                     $query->where('category_id', $category->id);
                 })->where(function ($query)  {
                     $query->where('product_group_default', 1)->where('product_group', 1)->orWhere('product_group',  null);
                 })->where('is_active','1')->where('is_approved','1')->where('category_id',$category->id)->orderBy('id','DESC')->get();
-                
-                
+				
                 $productIDArr = [];
                 if(!empty($ProductID)) {
         
@@ -1489,15 +1744,29 @@ class FrontController extends Controller
                         
                         $productIDArr[]= $value->id;
                     }
-                }
+                } */
+				//echo count($productIDArr);
 
-                $products =  Product::distinct('product_group')->whereHas('product_category_styles', function ($query) use($category,$productIDArr)  {
+                 /* $products =  Product::distinct('product_group')->whereHas('product_category_styles', function ($query) use($category,$productIDArr)  {
                     $query->where('category_id', $category->id)->whereIn('product_id',$productIDArr);
                 })->where(function ($query) {
                     $query->where('product_group_default', 1)->where('product_group', 1)->orWhere('product_group',  null);
-                })->where('is_active','1')->where('is_approved','1')->whereRaw('(`product_discount` is null  && `old_price` BETWEEN '.$request->segment(3).' AND  '.$request->segment(4).') or (`product_discount` is not null  && `new_price` BETWEEN '.$request->segment(3).' AND  '.$request->segment(4).')')->where('category_id',$category->id)->whereIn('id',$productIDArr)->orderBy('id','DESC')->get();
+                })->where('is_active','1')->where('is_approved','1')->whereRaw('(`product_discount` is null  && `old_price` BETWEEN '.$request->segment(3).' AND  '.$request->segment(4).') or (`product_discount` is not null  && `new_price` BETWEEN '.$request->segment(3).' AND  '.$request->segment(4).')')->where('category_id',$category->id)->whereIn('id',$productIDArr)->orderBy('id','DESC')->get(); */
+				
+				/* $products =  Product::distinct('product_group')->whereHas('product_category_styles', function ($query) use($category)  {
+                    $query->where('category_id', $category->id);
+                })->where(function ($query) {
+                    $query->where('product_group_default', 1)->where('product_group', 1)->orWhere('product_group',  null);
+                })->where('is_active','1')->where('is_approved','1')->whereRaw('(`product_discount` is null  && `old_price` BETWEEN '.$request->segment(3).' AND  '.$request->segment(4).') or (`product_discount` is not null  && `new_price` BETWEEN '.$request->segment(3).' AND  '.$request->segment(4).')')->where('category_id',$category->id)->orderBy('id','DESC')->get(); */
                 
-                
+                $products =  Product::distinct('product_group')
+				->leftjoin('product_category_styles', 'product_category_styles.product_id', '=', 'products.id')
+				->where('product_category_styles.category_id', $category->id)
+				
+				->where(function ($query) {
+                    $query->where('products.product_group_default', 1)->where('products.product_group', 1)->orWhere('products.product_group',  null);
+                })->where('products.is_active','1')->where('products.is_approved','1')->whereRaw('(products.product_discount is null  && products.old_price BETWEEN '.$request->segment(3).' AND  '.$request->segment(4).') or (products.product_discount is not null  && products.new_price BETWEEN '.$request->segment(3).' AND  '.$request->segment(4).')')->where('products.category_id',$category->id)->orderBy('products.id','DESC')->get();
+				
 
                 //$products = Product::whereBetween('new_price', [$minPrice, $request->segment(4)])->where('category_id',$category->id)->get();
                 //dd($products);
@@ -1510,10 +1779,14 @@ class FrontController extends Controller
         $pagination_count = 20;
         
         
-               
+              // print_r($products);
         // $product_max_price = $products->max('price');
         $products = $products->paginate($pagination_count);
-        
+		$max_page = $products->total() / $pagination_count;
+		//echo $max_page;
+		//print_r($products);
+        $debugQry = \DB::getQueryLog();
+		//print_r($debugQry);
         $banners = $category->banners()->where('is_active', 1)->get();
         $sections = $category->sections()->where('is_active', 1)->get();
          
@@ -1553,23 +1826,47 @@ class FrontController extends Controller
              
         if($category->category_id=='0') { 
 
-            $maleProduct =  Product::distinct('product_group')->whereHas('specificationTypes', function ($query) use($category)  {
+            /* $maleProduct =  Product::distinct('product_group')->whereHas('specificationTypes', function ($query) use($category)  {
                 $query->where('product_specification_type.value', 'like', 'm%')->where('name','LIKE','%Gender%');
             })->whereHas('product_category_styles', function($query) use($category) {
                 $query->where('category_id',$category->id);
             })->where(function ($query) {
                 $query->where('product_group_default', 1)->where('product_group', 1)->orWhere('product_group',  null);
-            })->where('is_active','1')->where('is_approved','1')->where('category_id',$category->id)->count();
+            })->where('is_active','1')->where('is_approved','1')->where('category_id',$category->id)->count(); */
+			
+			
+			$maleProduct =  Product::distinct('product_group')
+			->leftjoin('product_specification_type', 'product_specification_type.product_id', '=', 'products.id')
+			->leftjoin('product_category_styles', 'product_category_styles.product_id', '=', 'products.id')
+			->where('product_specification_type.value', 'like', 'm%')
+			->where('product_specification_type.specification_type_id', '11')
+			->where('product_category_styles.category_id', $category->id)
+			->where(function ($query) {
+                $query->where('products.product_group_default', 1)->where('products.product_group', 1)->orWhere('products.product_group',  null);
+            })->where('products.is_active','1')->where('products.is_approved','1')->where('products.category_id',$category->id)->count();
+			
 
          } else {
 
-            $maleProduct =  Product::distinct('product_group')->whereHas('specificationTypes', function ($query) use($category)  {
+            /* $maleProduct =  Product::distinct('product_group')->whereHas('specificationTypes', function ($query) use($category)  {
                 $query->where('product_specification_type.value', 'like', 'm%')->where('name','LIKE','%Gender%');
             })->whereHas('product_category_styles', function($query) use($category) {
                 $query->where('category_id',$category->category_id)->where('product_style_id',$category->id);
             })->where(function ($query) {
                 $query->where('product_group_default', 1)->where('product_group', 1)->orWhere('product_group',  null);
-              })->where('is_active','1')->where('is_approved','1')->where('category_id',$category->category_id)->count();
+              })->where('is_active','1')->where('is_approved','1')->where('category_id',$category->category_id)->count(); */
+			  
+			  
+			  $maleProduct =  Product::distinct('product_group')
+			->leftjoin('product_specification_type', 'product_specification_type.product_id', '=', 'products.id')
+			->leftjoin('product_category_styles', 'product_category_styles.product_id', '=', 'products.id')
+			->where('product_specification_type.value', 'like', 'm%')
+			->where('product_specification_type.specification_type_id', '11')
+			->where('product_category_styles.category_id', $category->category_id)
+			->where('product_category_styles.product_style_id', $category->id)
+			->where(function ($query) {
+                $query->where('products.product_group_default', 1)->where('products.product_group', 1)->orWhere('products.product_group',  null);
+            })->where('products.is_active','1')->where('products.is_approved','1')->where('products.category_id',$category->category_id)->count();
 
               
 
@@ -1580,29 +1877,46 @@ class FrontController extends Controller
          
          if($category->category_id=='0') { 
             
-            $femaleProduct =  Product::distinct('product_group')->whereHas('specificationTypes', function ($query) use($category)  {
+            /* $femaleProduct =  Product::distinct('product_group')->whereHas('specificationTypes', function ($query) use($category)  {
                 $query->where('product_specification_type.value', 'like', 'f%')->where('name','LIKE','%Gender%');
             })->whereHas('product_category_styles', function($query) use($category) {
                 $query->where('category_id',$category->id);
             })->where(function ($query) {
                 $query->where('product_group_default', 1)->where('product_group', 1)->orWhere('product_group',  null);
-              })->where('is_active','1')->where('is_approved','1')->where('category_id',$category->id)->count();
+              })->where('is_active','1')->where('is_approved','1')->where('category_id',$category->id)->count(); */
 
              
-            
+            $femaleProduct =  Product::distinct('product_group')
+			->leftjoin('product_specification_type', 'product_specification_type.product_id', '=', 'products.id')
+			->leftjoin('product_category_styles', 'product_category_styles.product_id', '=', 'products.id')
+			->where('product_specification_type.value', 'like', 'f%')
+			->where('product_specification_type.specification_type_id', '11')
+			->where('product_category_styles.category_id', $category->id)
+			->where(function ($query) {
+                $query->where('products.product_group_default', 1)->where('products.product_group', 1)->orWhere('products.product_group',  null);
+            })->where('products.is_active','1')->where('products.is_approved','1')->where('products.category_id',$category->id)->count();
 
          } else {
 
             
-            $femaleProduct =  Product::select(\DB::raw('count(*) as totalFemale'))->distinct('product_group')->whereHas('specificationTypes', function ($query) use($category)  {
+            /* $femaleProduct =  Product::select(\DB::raw('count(*) as totalFemale'))->distinct('product_group')->whereHas('specificationTypes', function ($query) use($category)  {
                 $query->where('product_specification_type.value', 'like', 'f%')->where('name','LIKE','%Gender%');
             })->whereHas('product_category_styles', function($query) use($category) {
                 $query->where('category_id',$category->category_id)->where('product_style_id',$category->id);
             })->where(function ($query) {
                 $query->where('product_group_default', 1)->where('product_group', 1)->orWhere('product_group',  null);
-            })->where('is_active','1')->where('is_approved','1')->where('category_id',$category->category_id)->count();
+            })->where('is_active','1')->where('is_approved','1')->where('category_id',$category->category_id)->count();  */
 
-            
+            $femaleProduct =  Product::select(\DB::raw('count(*) as totalFemale'))->distinct('product_group')
+			->leftjoin('product_specification_type', 'product_specification_type.product_id', '=', 'products.id')
+			->leftjoin('product_category_styles', 'product_category_styles.product_id', '=', 'products.id')
+			->where('product_specification_type.value', 'like', 'f%')
+			->where('product_specification_type.specification_type_id', '11')
+			->where('product_category_styles.category_id', $category->category_id)
+			->where('product_category_styles.product_style_id', $category->id)
+			->where(function ($query) {
+                $query->where('products.product_group_default', 1)->where('products.product_group', 1)->orWhere('products.product_group',  null);
+            })->where('products.is_active','1')->where('products.is_approved','1')->where('products.category_id',$category->category_id)->count();
 
 
             
@@ -1612,22 +1926,48 @@ class FrontController extends Controller
 
             if($category->slug == 'gift-item') { 
 
-                $kidsProduct =  Product::distinct('product_group')->whereHas('specificationTypes', function ($query) use($category)  {
+                /* $kidsProduct =  Product::distinct('product_group')->whereHas('specificationTypes', function ($query) use($category)  {
                     $query->where('product_specification_type.value', 'like', 'k%')->where('name','LIKE','%Gender%');
                 })->whereHas('product_category_styles', function($query) use($category) {
                     $query->whereIn('category_id', array(1,12))->whereIn('product_style_id', array( 31, 30,42,40,41,70));
                 })->where(function ($query) {
                     $query->where('product_group_default', 1)->where('product_group', 1)->orWhere('product_group',  null);
-                  })->where('is_active','1')->where('is_approved','1')->whereIn('category_id', array(1,12))->count();
+                  })->where('is_active','1')->where('is_approved','1')->whereIn('category_id', array(1,12))->count(); */
+				  
+				  
+				  $kidsProduct =  Product::distinct('product_group')
+				  ->leftjoin('product_specification_type', 'product_specification_type.product_id', '=', 'products.id')
+				->leftjoin('product_category_styles', 'product_category_styles.product_id', '=', 'products.id')
+				->where('product_specification_type.value', 'like', 'k%')
+				->where('product_specification_type.specification_type_id', '11')
+				->whereIn('product_category_styles.category_id', array(1,12))
+				->whereIn('product_category_styles.product_style_id', array( 31, 30,42,40,41,70))
+				->where(function ($query) {
+                    $query->where('products.product_group_default', 1)->where('products.product_group', 1)->orWhere('products.product_group',  null);
+                  })->where('products.is_active','1')->where('products.is_approved','1')->whereIn('products.category_id', array(1,12))->count();
+				
 
             } else {
-                $kidsProduct =  Product::distinct('product_group')->whereHas('specificationTypes', function ($query) use($category)  {
+                /* $kidsProduct =  Product::distinct('product_group')->whereHas('specificationTypes', function ($query) use($category)  {
                     $query->where('product_specification_type.value', 'like', 'k%')->where('name','LIKE','%Gender%');
                 })->whereHas('product_category_styles', function($query) use($category) {
                     $query->where('category_id',$category->id);
                 })->where(function ($query) {
                     $query->where('product_group_default', 1)->where('product_group', 1)->orWhere('product_group',  null);
-                  })->where('is_active','1')->where('is_approved','1')->where('category_id',$category->id)->count();
+                  })->where('is_active','1')->where('is_approved','1')->where('category_id',$category->id)->count(); */
+				  
+				  $kidsProduct =  Product::distinct('product_group')
+				  ->leftjoin('product_specification_type', 'product_specification_type.product_id', '=', 'products.id')
+				->leftjoin('product_category_styles', 'product_category_styles.product_id', '=', 'products.id')
+				->where('product_specification_type.value', 'like', 'k%')
+				->where('product_specification_type.specification_type_id', '11')
+				->where('product_category_styles.category_id', $category->id)
+				->where(function ($query) {
+                    $query->where('products.product_group_default', 1)->where('products.product_group', 1)->orWhere('products.product_group',  null);
+                  })->where('products.is_active','1')->where('products.is_approved','1')->where('products.category_id',$category->id)->count();
+				
+				  
+				
             }   
 
             
@@ -1639,22 +1979,46 @@ class FrontController extends Controller
 
             if($category->slug == 'gift-item') { 
 
-                $kidsProduct =  Product::distinct('product_group')->whereHas('specificationTypes', function ($query) use($category)  {
+                /* $kidsProduct =  Product::distinct('product_group')->whereHas('specificationTypes', function ($query) use($category)  {
                     $query->where('product_specification_type.value', 'like', 'k%')->where('name','LIKE','%Gender%');
                 })->whereHas('product_category_styles', function($query) use($category) {
                     $query->whereIn('category_id', array(1,12))->whereIn('product_style_id', array( 31, 30,42,40,41,70));
                 })->where(function ($query) {
                     $query->where('product_group_default', 1)->where('product_group', 1)->orWhere('product_group',  null);
-                  })->where('is_active','1')->where('is_approved','1')->whereIn('category_id', array(1,12))->count();
+                  })->where('is_active','1')->where('is_approved','1')->whereIn('category_id', array(1,12))->count(); */
+				  
+				  $kidsProduct =  Product::distinct('product_group')
+				  ->leftjoin('product_specification_type', 'product_specification_type.product_id', '=', 'products.id')
+				->leftjoin('product_category_styles', 'product_category_styles.product_id', '=', 'products.id')
+				->where('product_specification_type.value', 'like', 'k%')
+				->where('product_specification_type.specification_type_id', '11')
+				->whereIn('product_category_styles.category_id', array(1,12))
+				->whereIn('product_category_styles.product_style_id', array( 31, 30,42,40,41,70))
+				->where(function ($query) {
+                    $query->where('products.product_group_default', 1)->where('products.product_group', 1)->orWhere('products.product_group',  null);
+                  })->where('products.is_active','1')->where('products.is_approved','1')->whereIn('products.category_id', array(1,12))->count();
+				  
 
             } else {
-                $kidsProduct =  Product::distinct('product_group')->whereHas('specificationTypes', function ($query) use($category)  {
+                /* $kidsProduct =  Product::distinct('product_group')->whereHas('specificationTypes', function ($query) use($category)  {
                     $query->where('product_specification_type.value', 'like', 'k%')->where('name','LIKE','%Gender%');
                 })->whereHas('product_category_styles', function($query) use($category) {
                     $query->where('category_id',$category->category_id)->where('product_style_id',$category->id);
                 })->where(function ($query) {
                     $query->where('product_group_default', 1)->where('product_group', 1)->orWhere('product_group',  null);
-                  })->where('is_active','1')->where('is_approved','1')->where('category_id',$category->category_id)->count();
+                  })->where('is_active','1')->where('is_approved','1')->where('category_id',$category->category_id)->count(); */
+				  
+				  $kidsProduct =  Product::distinct('product_group')
+				  ->leftjoin('product_specification_type', 'product_specification_type.product_id', '=', 'products.id')
+				->leftjoin('product_category_styles', 'product_category_styles.product_id', '=', 'products.id')
+				->where('product_specification_type.value', 'like', 'k%')
+				->where('product_specification_type.specification_type_id', '11')
+				->where('product_category_styles.category_id', $category->category_id)
+				->where('product_category_styles.product_style_id', $category->id)
+				->where(function ($query) {
+                    $query->where('products.product_group_default', 1)->where('products.product_group', 1)->orWhere('products.product_group',  null);
+                  })->where('products.is_active','1')->where('products.is_approved','1')->where('products.category_id', $category->category_id)->count();
+				  
             }
         }
 
@@ -1662,22 +2026,45 @@ class FrontController extends Controller
 
             if($category->slug == 'gift-item') { 
 
-                $uniSexProduct =  Product::distinct('product_group')->whereHas('specificationTypes', function ($query) use($category)  {
+                /* $uniSexProduct =  Product::distinct('product_group')->whereHas('specificationTypes', function ($query) use($category)  {
                     $query->where('product_specification_type.value', 'like', 'u%')->where('name','LIKE','%Gender%');
                 })->whereHas('product_category_styles', function($query) use($category) {
                     $query->whereIn('category_id', array(1,12))->whereIn('product_style_id', array( 31, 30,42,40,41,70));
                 })->where(function ($query) {
                     $query->where('product_group_default', 1)->where('product_group', 1)->orWhere('product_group',  null);
-                  })->where('is_active','1')->where('is_approved','1')->whereIn('category_id', array(1,12))->count();
+                  })->where('is_active','1')->where('is_approved','1')->whereIn('category_id', array(1,12))->count(); */
+				  
+				  $uniSexProduct =  Product::distinct('product_group')
+				  ->leftjoin('product_specification_type', 'product_specification_type.product_id', '=', 'products.id')
+				->leftjoin('product_category_styles', 'product_category_styles.product_id', '=', 'products.id')
+				->where('product_specification_type.value', 'like', 'u%')
+				->where('product_specification_type.specification_type_id', '11')
+				->whereIn('product_category_styles.category_id', array(1,12))
+				->whereIn('product_category_styles.product_style_id', array( 31, 30,42,40,41,70))
+				->where(function ($query) {
+                    $query->where('products.product_group_default', 1)->where('products.product_group', 1)->orWhere('products.product_group',  null);
+                  })->where('products.is_active','1')->where('products.is_approved','1')->whereIn('products.category_id', array(1,12))->count();
 
             } else {
-                $uniSexProduct =  Product::distinct('product_group')->whereHas('specificationTypes', function ($query) use($category)  {
+                /* $uniSexProduct =  Product::distinct('product_group')->whereHas('specificationTypes', function ($query) use($category)  {
                     $query->where('product_specification_type.value', 'like', 'u%')->where('name','LIKE','%Gender%');
                 })->whereHas('product_category_styles', function($query) use($category) {
                     $query->where('category_id',$category->id);
                 })->where(function ($query) {
                     $query->where('product_group_default', 1)->where('product_group', 1)->orWhere('product_group',  null);
-                  })->where('is_active','1')->where('is_approved','1')->where('category_id',$category->id)->count();
+                  })->where('is_active','1')->where('is_approved','1')->where('category_id',$category->id)->count(); */
+				  
+				  
+				  
+				  $uniSexProduct =  Product::distinct('product_group')
+				  ->leftjoin('product_specification_type', 'product_specification_type.product_id', '=', 'products.id')
+				->leftjoin('product_category_styles', 'product_category_styles.product_id', '=', 'products.id')
+				->where('product_specification_type.value', 'like', 'u%')
+				->where('product_specification_type.specification_type_id', '11')
+				->where('product_category_styles.category_id', $category->id)
+				->where(function ($query) {
+                    $query->where('products.product_group_default', 1)->where('products.product_group', 1)->orWhere('products.product_group',  null);
+                  })->where('products.is_active','1')->where('products.is_approved','1')->where('products.category_id', $category->id)->count();
             }
 
             
@@ -1689,22 +2076,46 @@ class FrontController extends Controller
 
             if($category->slug == 'gift-item') { 
 
-                $uniSexProduct =  Product::distinct('product_group')->whereHas('specificationTypes', function ($query) use($category)  {
+                /* $uniSexProduct =  Product::distinct('product_group')->whereHas('specificationTypes', function ($query) use($category)  {
                     $query->where('product_specification_type.value', 'like', 'u%')->where('name','LIKE','%Gender%');
                 })->whereHas('product_category_styles', function($query) use($category) {
                     $query->whereIn('category_id', array(1,12))->whereIn('product_style_id', array( 31, 30,42,40,41,70));
                 })->where(function ($query) {
                     $query->where('product_group_default', 1)->where('product_group', 1)->orWhere('product_group',  null);
-                  })->where('is_active','1')->where('is_approved','1')->whereIn('category_id', array(1,12))->count();
+                  })->where('is_active','1')->where('is_approved','1')->whereIn('category_id', array(1,12))->count(); */
+				  
+				  
+				  $uniSexProduct =  Product::distinct('product_group')
+				  ->leftjoin('product_specification_type', 'product_specification_type.product_id', '=', 'products.id')
+				->leftjoin('product_category_styles', 'product_category_styles.product_id', '=', 'products.id')
+				->where('product_specification_type.value', 'like', 'u%')
+				->where('product_specification_type.specification_type_id', '11')
+				->whereIn('product_category_styles.category_id', array(1,12))
+				->whereIn('product_category_styles.product_style_id', array( 31, 30,42,40,41,70))
+				->where(function ($query) {
+                    $query->where('products.product_group_default', 1)->where('products.product_group', 1)->orWhere('products.product_group',  null);
+                  })->where('products.is_active','1')->where('products.is_approved','1')->whereIn('products.category_id', array(1,12))->count();
 
             } else {
-                $uniSexProduct =  Product::distinct('product_group')->whereHas('specificationTypes', function ($query) use($category)  {
+                /* $uniSexProduct =  Product::distinct('product_group')->whereHas('specificationTypes', function ($query) use($category)  {
                     $query->where('product_specification_type.value', 'like', 'u%')->where('name','LIKE','%Gender%');
                 })->whereHas('product_category_styles', function($query) use($category) {
                     $query->where('category_id',$category->category_id)->where('product_style_id',$category->id);
                 })->where(function ($query) {
                     $query->where('product_group_default', 1)->where('product_group', 1)->orWhere('product_group',  null);
-                  })->where('is_active','1')->where('is_approved','1')->where('category_id',$category->category_id)->count();
+                  })->where('is_active','1')->where('is_approved','1')->where('category_id',$category->category_id)->count(); */
+				  
+				  
+				  $uniSexProduct =  Product::distinct('product_group')
+				  ->leftjoin('product_specification_type', 'product_specification_type.product_id', '=', 'products.id')
+				->leftjoin('product_category_styles', 'product_category_styles.product_id', '=', 'products.id')
+				->where('product_specification_type.value', 'like', 'u%')
+				->where('product_specification_type.specification_type_id', '11')
+				->where('product_category_styles.category_id', $category->category_id)
+				->where('product_category_styles.product_style_id', $category->id)
+				->where(function ($query) {
+                    $query->where('products.product_group_default', 1)->where('products.product_group', 1)->orWhere('products.product_group',  null);
+                  })->where('products.is_active','1')->where('products.is_approved','1')->where('products.category_id', $category->category_id)->count();
             }
             
              
@@ -1719,140 +2130,303 @@ class FrontController extends Controller
 
         
         
-        if($category->category_id=='0') { 
+        if($category->category_id=='0') {
+				if($request->segment(3) == 'men'){
+					
+		}elseif($request->segment(3) == 'women'){
+			
+		}elseif($request->segment(3) == 'kids'){
+			
+		}else {
 
             if($request->segment(3)!='' && $request->segment(4)=='') {
                 
-                $offerProduct =  Product::distinct('product_group')->whereHas('product_category_styles', function ($query) use($category)  {
+                /* $offerProduct =  Product::distinct('product_group')->whereHas('product_category_styles', function ($query) use($category)  {
                     $query->where('category_id',$category->id);
                 })->where(function ($query) {
                     $query->where('product_group_default', 1)->where('product_group', 1)->orWhere('product_group',  null);
-                })->where('product_discount','<>',false)->where('is_active','1')->where('is_approved','1')->whereRaw('(`product_discount` is null  && `old_price` > '.$request->segment(3).' ) or (`product_discount` is not null  && `new_price` > '.$request->segment(3).' )')->where('category_id',$category->id)->count();
+                })->where('product_discount','<>',false)->where('is_active','1')->where('is_approved','1')->whereRaw('(`product_discount` is null  && `old_price` > '.$request->segment(3).' ) or (`product_discount` is not null  && `new_price` > '.$request->segment(3).' )')->where('category_id',$category->id)->count(); */
+				
+				$offerProduct =  Product::distinct('product_group')
+				->leftjoin('product_category_styles', 'product_category_styles.product_id', '=', 'products.id')
+				->where('product_category_styles.category_id', $category->id)
+				->where(function ($query) {
+                    $query->where('products.product_group_default', 1)->where('products.product_group', 1)->orWhere('products.product_group',  null);
+                })->where('products.product_discount','<>',false)->where('products.is_active','1')->where('products.is_approved','1')->whereRaw('(products.product_discount is null  && products.old_price > '.$request->segment(3).' ) or (products.product_discount is not null  && products.new_price > '.$request->segment(3).' )')->where('products.category_id',$category->id)->count();
+				
+				
 
-                $purity_eighteen_carat = Product::whereHas('specificationTypes', function ($query)  {
+                /* $purity_eighteen_carat = Product::whereHas('specificationTypes', function ($query)  {
                     $query->where('value', '18')->where('name','LIKE','%Purity%');
                 })->whereHas('product_category_styles', function ($query) use($category)  {
                     $query->where('category_id', $category->id);
                 })->where(function ($query) {
                     $query->where('product_group_default', 1)->where('product_group', 1)->orWhere('product_group',  null);
-                })->where('category_id',$category->id)->where('is_active','1')->whereRaw('(`product_discount` is null  && `old_price` > '.$request->segment(3).' ) or (`product_discount` is not null  && `new_price` > '.$request->segment(3).' )')->where('is_approved','1')->get();
+                })->where('category_id',$category->id)->where('is_active','1')->whereRaw('(`product_discount` is null  && `old_price` > '.$request->segment(3).' ) or (`product_discount` is not null  && `new_price` > '.$request->segment(3).' )')->where('is_approved','1')->get(); */
+				
+				$purity_eighteen_carat = Product::leftjoin('product_specification_type', 'product_specification_type.product_id', '=', 'products.id')
+				->leftjoin('product_category_styles', 'product_category_styles.product_id', '=', 'products.id')
+				->where('product_specification_type.value', '18')
+				->where('product_specification_type.specification_type_id', '9')
+				->where('product_category_styles.category_id', $category->id)
+				->where(function ($query) {
+                    $query->where('products.product_group_default', 1)->where('products.product_group', 1)->orWhere('products.product_group',  null);
+                })->where('products.category_id',$category->id)->where('products.is_active','1')->whereRaw('(products.product_discount is null  && products.old_price > '.$request->segment(3).' ) or (products.product_discount is not null  && products.new_price > '.$request->segment(3).' )')->where('products.is_approved','1')->get();
+				
+				
+				
                 
-                $purity_fourteen_carat = Product::whereHas('specificationTypes', function ($query)  {
+                /* $purity_fourteen_carat = Product::whereHas('specificationTypes', function ($query)  {
                     $query->where('value', '14')->where('name','LIKE','%Purity%');
                 })->whereHas('product_category_styles', function ($query) use($category)  {
                     $query->where('category_id', $category->id);
                 })->where(function ($query) {
                     $query->where('product_group_default', 1)->where('product_group', 1)->orWhere('product_group',  null);
-                })->where('category_id',$category->id)->where('is_active','1')->whereRaw('(`product_discount` is null  && `old_price` > '.$request->segment(3).' ) or (`product_discount` is not null  && `new_price` > '.$request->segment(3).' )')->where('is_approved','1')->get();
+                })->where('category_id',$category->id)->where('is_active','1')->whereRaw('(`product_discount` is null  && `old_price` > '.$request->segment(3).' ) or (`product_discount` is not null  && `new_price` > '.$request->segment(3).' )')->where('is_approved','1')->get(); */
+				
+				$purity_fourteen_carat = Product::leftjoin('product_specification_type', 'product_specification_type.product_id', '=', 'products.id')
+				->leftjoin('product_category_styles', 'product_category_styles.product_id', '=', 'products.id')
+				->where('product_specification_type.value', '14')
+				->where('product_specification_type.specification_type_id', '9')
+				->where('product_category_styles.category_id', $category->id)
+				->where(function ($query) {
+                    $query->where('products.product_group_default', 1)->where('products.product_group', 1)->orWhere('products.product_group',  null);
+                })->where('products.category_id',$category->id)->where('products.is_active','1')->whereRaw('(products.product_discount is null  && products.old_price > '.$request->segment(3).' ) or (products.product_discount is not null  && products.new_price > '.$request->segment(3).' )')->where('products.is_approved','1')->get();
+				
 
-                $purity_twenty_two_carat = Product::whereHas('specificationTypes', function ($query)  {
+                /* $purity_twenty_two_carat = Product::whereHas('specificationTypes', function ($query)  {
                     $query->where('value', '22')->where('name','LIKE','%Purity%');
                 })->whereHas('product_category_styles', function ($query) use($category)  {
                     $query->where('category_id', $category->id);
                 })->where(function ($query) {
                     $query->where('product_group_default', 1)->where('product_group', 1)->orWhere('product_group',  null);
-                })->where('category_id',$category->id)->where('is_active','1')->whereRaw('(`product_discount` is null  && `old_price` > '.$request->segment(3).' ) or (`product_discount` is not null  && `new_price` > '.$request->segment(3).' )')->where('is_approved','1')->get();
+                })->where('category_id',$category->id)->where('is_active','1')->whereRaw('(`product_discount` is null  && `old_price` > '.$request->segment(3).' ) or (`product_discount` is not null  && `new_price` > '.$request->segment(3).' )')->where('is_approved','1')->get(); */
+				
+				
+				$purity_twenty_two_carat = Product::leftjoin('product_specification_type', 'product_specification_type.product_id', '=', 'products.id')
+				->leftjoin('product_category_styles', 'product_category_styles.product_id', '=', 'products.id')
+				->where('product_specification_type.value', '22')
+				->where('product_specification_type.specification_type_id', '9')
+				->where('product_category_styles.category_id', $category->id)
+				->where(function ($query) {
+                    $query->where('products.product_group_default', 1)->where('products.product_group', 1)->orWhere('products.product_group',  null);
+                })->where('products.category_id',$category->id)->where('products.is_active','1')->whereRaw('(products.product_discount is null  && products.old_price > '.$request->segment(3).' ) or (products.product_discount is not null  && products.new_price > '.$request->segment(3).' )')->where('products.is_approved','1')->get();
                 
 
-                $metal =  Product::with('category')->whereHas('product_category_styles', function ($query) use($category)  {
+                /* $metal =  Product::with('category')->whereHas('product_category_styles', function ($query) use($category)  {
                     $query->where('category_id', $category->id);
                 })->where(function ($query) {
                     $query->where('product_group_default', 1)->where('product_group', 1)->orWhere('product_group',  null);
-                })->where('is_active','1')->where('is_approved','1')->where('category_id',$category->id)->get();
+                })->where('is_active','1')->where('is_approved','1')->where('category_id',$category->id)->get(); */
+				
+				$metal =  Product::with('category')
+				->leftjoin('product_category_styles', 'product_category_styles.product_id', '=', 'products.id')
+				->where('product_category_styles.category_id', $category->id)
+				->where(function ($query) {
+                    $query->where('products.product_group_default', 1)->where('products.product_group', 1)->orWhere('products.product_group',  null);
+                })->where('products.is_active','1')->where('products.is_approved','1')->where('products.category_id',$category->id)->get();
+				
                 
 
-                $maleProduct =  Product::distinct('product_group')->whereHas('specificationTypes', function ($query) use($category)  {
+                /* $maleProduct =  Product::distinct('product_group')->whereHas('specificationTypes', function ($query) use($category)  {
                     $query->where('product_specification_type.value', 'like', 'm%')->where('name','LIKE','%Gender%');
                 })->whereHas('product_category_styles', function($query) use($category) {
                     $query->where('category_id',$category->id);
                 })->where(function ($query) {
                     $query->where('product_group_default', 1)->where('product_group', 1)->orWhere('product_group',  null);
-                })->where('is_active','1')->where('is_approved','1')->whereRaw('(`product_discount` is null  && `old_price` > '.$request->segment(3).' ) or (`product_discount` is not null  && `new_price` > '.$request->segment(3).' )')->where('category_id',$category->id)->count();
+                })->where('is_active','1')->where('is_approved','1')->whereRaw('(`product_discount` is null  && `old_price` > '.$request->segment(3).' ) or (`product_discount` is not null  && `new_price` > '.$request->segment(3).' )')->where('category_id',$category->id)->count(); */
+				
+				$maleProduct =  Product::distinct('product_group')
+				->leftjoin('product_specification_type', 'product_specification_type.product_id', '=', 'products.id')
+				->leftjoin('product_category_styles', 'product_category_styles.product_id', '=', 'products.id')
+				->where('product_specification_type.value', 'like', 'm%')
+				->where('product_specification_type.specification_type_id', '11')
+				->where('product_category_styles.category_id', $category->id)
+				->where(function ($query) {
+                    $query->where('products.product_group_default', 1)->where('products.product_group', 1)->orWhere('products.product_group',  null);
+                })->where('products.is_active','1')->where('products.is_approved','1')->whereRaw('(products.product_discount is null  && products.old_price > '.$request->segment(3).' ) or (products.product_discount is not null  && products.new_price > '.$request->segment(3).' )')->where('products.category_id',$category->id)->count();
+				
 
-                $femaleProduct =  Product::distinct('product_group')->whereHas('specificationTypes', function ($query) use($category)  {
-                    $query->where('product_specification_type.value', 'like', 'm%')->where('name','LIKE','%Gender%');
-                })->whereHas('product_category_styles', function($query) use($category) {
-                    $query->where('category_id',$category->id);
-                })->where(function ($query) {
-                    $query->where('product_group_default', 1)->where('product_group', 1)->orWhere('product_group',  null);
-                })->where('is_active','1')->where('is_approved','1')->whereRaw('(`product_discount` is null  && `old_price` > '.$request->segment(3).' ) or (`product_discount` is not null  && `new_price` > '.$request->segment(3).' )')->where('category_id',$category->id)->count();
-
-
-                $uniSexProduct =  Product::distinct('product_group')->whereHas('specificationTypes', function ($query) use($category)  {
-                    $query->where('product_specification_type.value', 'like', 'u%')->where('name','LIKE','%Gender%');
-                })->whereHas('product_category_styles', function($query) use($category) {
-                    $query->where('category_id',$category->id);
-                })->where(function ($query) {
-                    $query->where('product_group_default', 1)->where('product_group', 1)->orWhere('product_group',  null);
-                })->where('is_active','1')->where('is_approved','1')->whereRaw('(`product_discount` is null  && `old_price` > '.$request->segment(3).' ) or (`product_discount` is not null  && `new_price` > '.$request->segment(3).' )')->where('category_id',$category->id)->count();
-                
-                
-            } else {
-                $offerProduct =  Product::distinct('product_group')->whereHas('product_category_styles', function ($query) use($category)  {
-                    $query->where('category_id',$category->id);
-                })->where(function ($query) {
-                    $query->where('product_group_default', 1)->where('product_group', 1)->orWhere('product_group',  null);
-                  })->where('product_discount','<>',false)->where('is_active','1')->where('is_approved','1')->whereRaw('(`product_discount` is null  && `old_price` BETWEEN '.$request->segment(3).' AND  '.$request->segment(4).') or (`product_discount` is not null  && `new_price` BETWEEN '.$request->segment(3).' AND  '.$request->segment(4).')')->where('category_id',$category->id)->count();
-
-                $purity_eighteen_carat = Product::whereHas('specificationTypes', function ($query)  {
-                    $query->where('value',  '18')->where('name','LIKE','%Purity%');
-                })->whereHas('product_category_styles', function ($query) use($category)  {
-                    $query->where('category_id', $category->id);
-                })->where(function ($query) {
-                    $query->where('product_group_default', 1)->where('product_group', 1)->orWhere('product_group',  null);
-                })->where('category_id',$category->id)->where('is_active','1')->whereRaw('(`product_discount` is null  && `old_price` BETWEEN '.$request->segment(3).' AND  '.$request->segment(4).') or (`product_discount` is not null  && `new_price` BETWEEN '.$request->segment(3).' AND  '.$request->segment(4).')')->where('is_approved','1')->get();
-                
-                $purity_fourteen_carat = Product::whereHas('specificationTypes', function ($query)  {
-                    $query->where('value', '14')->where('name','LIKE','%Purity%');
-                })->whereHas('product_category_styles', function ($query) use($category)  {
-                    $query->where('category_id',$category->id);
-                })->where(function ($query) {
-                    $query->where('product_group_default', 1)->where('product_group', 1)->orWhere('product_group',  null);
-                })->where('category_id',$category->id)->where('is_active','1')->whereRaw('(`product_discount` is null  && `old_price` BETWEEN '.$request->segment(3).' AND  '.$request->segment(4).') or (`product_discount` is not null  && `new_price` BETWEEN '.$request->segment(3).' AND  '.$request->segment(4).')')->where('is_approved','1')->get();
-            
-                
-                $purity_twenty_two_carat = Product::whereHas('specificationTypes', function ($query)  {
-                    $query->where('value', '22')->where('name','LIKE','%Purity%');
-                })->whereHas('product_category_styles', function ($query) use($category)  {
-                    $query->where('category_id',$category->id);
-                })->where(function ($query) {
-                    $query->where('product_group_default', 1)->where('product_group', 1)->orWhere('product_group',  null);
-                })->where('category_id',$category->id)->where('is_active','1')->whereRaw('(`product_discount` is null  && `old_price` BETWEEN '.$request->segment(3).' AND  '.$request->segment(4).') or (`product_discount` is not null  && `new_price` BETWEEN '.$request->segment(3).' AND  '.$request->segment(4).')')->where('is_approved','1')->get();
-
-                $metal =  Product::with('category')->whereHas('product_category_styles', function ($query) use($category)  {
-                    $query->where('category_id',$category->id);
-                })->where(function ($query) {
-                    $query->where('product_group_default', 1)->where('product_group', 1)->orWhere('product_group',  null);
-                  })->where('is_active','1')->where('is_approved','1')->whereRaw('(`product_discount` is null  && `old_price` BETWEEN '.$request->segment(3).' AND  '.$request->segment(4).') or (`product_discount` is not null  && `new_price` BETWEEN '.$request->segment(3).' AND  '.$request->segment(4).')')->where('category_id',$category->id)->get();
-                
-                $maleProduct =  Product::distinct('product_group')->whereHas('specificationTypes', function ($query) use($category)  {
-                    $query->where('product_specification_type.value', 'like', 'm%')->where('name','LIKE','%Gender%');
-                })->whereHas('product_category_styles', function($query) use($category) {
-                    $query->where('category_id',$category->id);
-                })->where(function ($query) {
-                    $query->where('product_group_default', 1)->where('product_group', 1)->orWhere('product_group',  null);
-                })->where('is_active','1')->where('is_approved','1')->whereRaw('(`product_discount` is null  && `old_price` BETWEEN '.$request->segment(3).' AND  '.$request->segment(4).') or (`product_discount` is not null  && `new_price` BETWEEN '.$request->segment(3).' AND  '.$request->segment(4).')')->where('category_id',$category->id)->count();
-
-                $femaleProduct =  Product::distinct('product_group')->whereHas('specificationTypes', function ($query) use($category)  {
+                /* $femaleProduct =  Product::distinct('product_group')->whereHas('specificationTypes', function ($query) use($category)  {
                     $query->where('product_specification_type.value', 'like', 'f%')->where('name','LIKE','%Gender%');
                 })->whereHas('product_category_styles', function($query) use($category) {
                     $query->where('category_id',$category->id);
                 })->where(function ($query) {
                     $query->where('product_group_default', 1)->where('product_group', 1)->orWhere('product_group',  null);
-                })->where('is_active','1')->where('is_approved','1')->whereRaw('(`product_discount` is null  && `old_price` BETWEEN '.$request->segment(3).' AND  '.$request->segment(4).') or (`product_discount` is not null  && `new_price` BETWEEN '.$request->segment(3).' AND  '.$request->segment(4).')')->where('category_id',$category->id)->count();
-            
-                $uniSexProduct =  Product::distinct('product_group')->whereHas('specificationTypes', function ($query) use($category)  {
+                })->where('is_active','1')->where('is_approved','1')->whereRaw('(`product_discount` is null  && `old_price` > '.$request->segment(3).' ) or (`product_discount` is not null  && `new_price` > '.$request->segment(3).' )')->where('category_id',$category->id)->count(); */
+				
+				$femaleProduct =  Product::distinct('product_group')
+				->leftjoin('product_specification_type', 'product_specification_type.product_id', '=', 'products.id')
+				->leftjoin('product_category_styles', 'product_category_styles.product_id', '=', 'products.id')
+				->where('product_specification_type.value', 'like', 'f%')
+				->where('product_specification_type.specification_type_id', '11')
+				->where('product_category_styles.category_id', $category->id)
+				->where(function ($query) {
+                    $query->where('products.product_group_default', 1)->where('products.product_group', 1)->orWhere('products.product_group',  null);
+                })->where('products.is_active','1')->where('products.is_approved','1')->whereRaw('(products.product_discount is null  && products.old_price > '.$request->segment(3).' ) or (products.product_discount is not null  && products.new_price > '.$request->segment(3).' )')->where('products.category_id',$category->id)->count();
+
+
+                /* $uniSexProduct =  Product::distinct('product_group')->whereHas('specificationTypes', function ($query) use($category)  {
                     $query->where('product_specification_type.value', 'like', 'u%')->where('name','LIKE','%Gender%');
                 })->whereHas('product_category_styles', function($query) use($category) {
                     $query->where('category_id',$category->id);
                 })->where(function ($query) {
                     $query->where('product_group_default', 1)->where('product_group', 1)->orWhere('product_group',  null);
-                })->where('is_active','1')->where('is_approved','1')->whereRaw('(`product_discount` is null  && `old_price` BETWEEN '.$request->segment(3).' AND  '.$request->segment(4).') or (`product_discount` is not null  && `new_price` BETWEEN '.$request->segment(3).' AND  '.$request->segment(4).')')->where('category_id',$category->id)->count();
+                })->where('is_active','1')->where('is_approved','1')->whereRaw('(`product_discount` is null  && `old_price` > '.$request->segment(3).' ) or (`product_discount` is not null  && `new_price` > '.$request->segment(3).' )')->where('category_id',$category->id)->count(); */
+				
+				$uniSexProduct =  Product::distinct('product_group')
+				->leftjoin('product_specification_type', 'product_specification_type.product_id', '=', 'products.id')
+				->leftjoin('product_category_styles', 'product_category_styles.product_id', '=', 'products.id')
+				->where('product_specification_type.value', 'like', 'u%')
+				->where('product_specification_type.specification_type_id', '11')
+				->where('product_category_styles.category_id', $category->id)
+				->where(function ($query) {
+                    $query->where('products.product_group_default', 1)->where('products.product_group', 1)->orWhere('products.product_group',  null);
+                })->where('products.is_active','1')->where('products.is_approved','1')->whereRaw('(products.product_discount is null  && products.old_price > '.$request->segment(3).' ) or (products.product_discount is not null  && products.new_price > '.$request->segment(3).' )')->where('products.category_id',$category->id)->count();
+                
+                
+            } else {
+                /* $offerProduct =  Product::distinct('product_group')->whereHas('product_category_styles', function ($query) use($category)  {
+                    $query->where('category_id',$category->id);
+                })->where(function ($query) {
+                    $query->where('product_group_default', 1)->where('product_group', 1)->orWhere('product_group',  null);
+                  })->where('product_discount','<>',false)->where('is_active','1')->where('is_approved','1')->whereRaw('(`product_discount` is null  && `old_price` BETWEEN '.$request->segment(3).' AND  '.$request->segment(4).') or (`product_discount` is not null  && `new_price` BETWEEN '.$request->segment(3).' AND  '.$request->segment(4).')')->where('category_id',$category->id)->count(); */
+				  
+				  
+				  $offerProduct =  Product::distinct('product_group')
+				->leftjoin('product_category_styles', 'product_category_styles.product_id', '=', 'products.id')
+				->where('product_category_styles.category_id', $category->id)
+				->where(function ($query) {
+                    $query->where('products.product_group_default', 1)->where('products.product_group', 1)->orWhere('products.product_group',  null);
+                  })->where('products.product_discount','<>',false)->where('products.is_active','1')->where('products.is_approved','1')->whereRaw('(products.product_discount is null  && products.old_price BETWEEN '.$request->segment(3).' AND  '.$request->segment(4).') or (products.product_discount is not null  && products.new_price BETWEEN '.$request->segment(3).' AND  '.$request->segment(4).')')->where('products.category_id',$category->id)->count();
+
+                /* $purity_eighteen_carat = Product::whereHas('specificationTypes', function ($query)  {
+                    $query->where('value',  '18')->where('name','LIKE','%Purity%');
+                })->whereHas('product_category_styles', function ($query) use($category)  {
+                    $query->where('category_id', $category->id);
+                })->where(function ($query) {
+                    $query->where('product_group_default', 1)->where('product_group', 1)->orWhere('product_group',  null);
+                })->where('category_id',$category->id)->where('is_active','1')->whereRaw('(`product_discount` is null  && `old_price` BETWEEN '.$request->segment(3).' AND  '.$request->segment(4).') or (`product_discount` is not null  && `new_price` BETWEEN '.$request->segment(3).' AND  '.$request->segment(4).')')->where('is_approved','1')->get(); */
+				
+				$purity_eighteen_carat = Product::leftjoin('product_specification_type', 'product_specification_type.product_id', '=', 'products.id')
+				->leftjoin('product_category_styles', 'product_category_styles.product_id', '=', 'products.id')
+				->where('product_specification_type.value', '18')
+				->where('product_specification_type.specification_type_id', '9')
+				->where('product_category_styles.category_id', $category->id)
+				->where(function ($query) {
+                    $query->where('product_group_default', 1)->where('product_group', 1)->orWhere('product_group',  null);
+                })->where('products.category_id',$category->id)->where('products.is_active','1')->whereRaw('(products.product_discount is null  && products.old_price BETWEEN '.$request->segment(3).' AND  '.$request->segment(4).') or (products.product_discount is not null  && products.new_price BETWEEN '.$request->segment(3).' AND  '.$request->segment(4).')')->where('products.is_approved','1')->get();
+				
+                
+                /* $purity_fourteen_carat = Product::whereHas('specificationTypes', function ($query)  {
+                    $query->where('value', '14')->where('name','LIKE','%Purity%');
+                })->whereHas('product_category_styles', function ($query) use($category)  {
+                    $query->where('category_id',$category->id);
+                })->where(function ($query) {
+                    $query->where('product_group_default', 1)->where('product_group', 1)->orWhere('product_group',  null);
+                })->where('category_id',$category->id)->where('is_active','1')->whereRaw('(`product_discount` is null  && `old_price` BETWEEN '.$request->segment(3).' AND  '.$request->segment(4).') or (`product_discount` is not null  && `new_price` BETWEEN '.$request->segment(3).' AND  '.$request->segment(4).')')->where('is_approved','1')->get(); */
+				
+				
+				$purity_fourteen_carat = Product::leftjoin('product_specification_type', 'product_specification_type.product_id', '=', 'products.id')
+				->leftjoin('product_category_styles', 'product_category_styles.product_id', '=', 'products.id')
+				->where('product_specification_type.value', '14')
+				->where('product_specification_type.specification_type_id', '9')
+				->where('product_category_styles.category_id', $category->id)
+				->where(function ($query) {
+                    $query->where('product_group_default', 1)->where('product_group', 1)->orWhere('product_group',  null);
+                })->where('products.category_id',$category->id)->where('products.is_active','1')->whereRaw('(products.product_discount is null  && products.old_price BETWEEN '.$request->segment(3).' AND  '.$request->segment(4).') or (products.product_discount is not null  && products.new_price BETWEEN '.$request->segment(3).' AND  '.$request->segment(4).')')->where('products.is_approved','1')->get();
+            
+                
+               /*  $purity_twenty_two_carat = Product::whereHas('specificationTypes', function ($query)  {
+                    $query->where('value', '22')->where('name','LIKE','%Purity%');
+                })->whereHas('product_category_styles', function ($query) use($category)  {
+                    $query->where('category_id',$category->id);
+                })->where(function ($query) {
+                    $query->where('product_group_default', 1)->where('product_group', 1)->orWhere('product_group',  null);
+                })->where('category_id',$category->id)->where('is_active','1')->whereRaw('(`product_discount` is null  && `old_price` BETWEEN '.$request->segment(3).' AND  '.$request->segment(4).') or (`product_discount` is not null  && `new_price` BETWEEN '.$request->segment(3).' AND  '.$request->segment(4).')')->where('is_approved','1')->get(); */
+				
+				$purity_twenty_two_carat = Product::leftjoin('product_specification_type', 'product_specification_type.product_id', '=', 'products.id')
+				->leftjoin('product_category_styles', 'product_category_styles.product_id', '=', 'products.id')
+				->where('product_specification_type.value', '22')
+				->where('product_specification_type.specification_type_id', '9')
+				->where('product_category_styles.category_id', $category->id)
+				->where(function ($query) {
+                    $query->where('product_group_default', 1)->where('product_group', 1)->orWhere('product_group',  null);
+                })->where('products.category_id',$category->id)->where('products.is_active','1')->whereRaw('(products.product_discount is null  && products.old_price BETWEEN '.$request->segment(3).' AND  '.$request->segment(4).') or (products.product_discount is not null  && products.new_price BETWEEN '.$request->segment(3).' AND  '.$request->segment(4).')')->where('products.is_approved','1')->get();
+
+                /* $metal =  Product::with('category')->whereHas('product_category_styles', function ($query) use($category)  {
+                    $query->where('category_id',$category->id);
+                })->where(function ($query) {
+                    $query->where('product_group_default', 1)->where('product_group', 1)->orWhere('product_group',  null);
+                  })->where('is_active','1')->where('is_approved','1')->whereRaw('(`product_discount` is null  && `old_price` BETWEEN '.$request->segment(3).' AND  '.$request->segment(4).') or (`product_discount` is not null  && `new_price` BETWEEN '.$request->segment(3).' AND  '.$request->segment(4).')')->where('category_id',$category->id)->get(); */
+				  
+				  $metal =  Product::with('category')
+				  ->leftjoin('product_category_styles', 'product_category_styles.product_id', '=', 'products.id')
+				  ->where('product_category_styles.category_id',$category->id)
+				  ->where(function ($query) {
+                    $query->where('products.product_group_default', 1)->where('products.product_group', 1)->orWhere('products.product_group',  null);
+                  })->where('products.is_active','1')->where('products.is_approved','1')->whereRaw('(products.product_discount is null  && products.old_price BETWEEN '.$request->segment(3).' AND  '.$request->segment(4).') or (products.product_discount is not null  && products.new_price BETWEEN '.$request->segment(3).' AND  '.$request->segment(4).')')->where('products.category_id',$category->id)->get();
+				  
+                
+                /* $maleProduct =  Product::distinct('product_group')->whereHas('specificationTypes', function ($query) use($category)  {
+                    $query->where('product_specification_type.value', 'like', 'm%')->where('name','LIKE','%Gender%');
+                })->whereHas('product_category_styles', function($query) use($category) {
+                    $query->where('category_id',$category->id);
+                })->where(function ($query) {
+                    $query->where('product_group_default', 1)->where('product_group', 1)->orWhere('product_group',  null);
+                })->where('is_active','1')->where('is_approved','1')->whereRaw('(`product_discount` is null  && `old_price` BETWEEN '.$request->segment(3).' AND  '.$request->segment(4).') or (`product_discount` is not null  && `new_price` BETWEEN '.$request->segment(3).' AND  '.$request->segment(4).')')->where('category_id',$category->id)->count(); */
+				
+				$maleProduct = Product::distinct('product_group')
+				->leftjoin('product_specification_type', 'product_specification_type.product_id', '=', 'products.id')
+				->leftjoin('product_category_styles', 'product_category_styles.product_id', '=', 'products.id')
+				->where('product_specification_type.value', 'like', 'm%')
+				->where('product_specification_type.specification_type_id', '11')
+				->where('product_category_styles.category_id', $category->id)
+				->where(function ($query) {
+                    $query->where('product_group_default', 1)->where('product_group', 1)->orWhere('product_group',  null);
+                })->where('products.category_id',$category->id)->where('products.is_active','1')->whereRaw('(products.product_discount is null  && products.old_price BETWEEN '.$request->segment(3).' AND  '.$request->segment(4).') or (products.product_discount is not null  && products.new_price BETWEEN '.$request->segment(3).' AND  '.$request->segment(4).')')->where('products.is_approved','1')->count();
+				
+
+                /* $femaleProduct =  Product::distinct('product_group')->whereHas('specificationTypes', function ($query) use($category)  {
+                    $query->where('product_specification_type.value', 'like', 'f%')->where('name','LIKE','%Gender%');
+                })->whereHas('product_category_styles', function($query) use($category) {
+                    $query->where('category_id',$category->id);
+                })->where(function ($query) {
+                    $query->where('product_group_default', 1)->where('product_group', 1)->orWhere('product_group',  null);
+                })->where('is_active','1')->where('is_approved','1')->whereRaw('(`product_discount` is null  && `old_price` BETWEEN '.$request->segment(3).' AND  '.$request->segment(4).') or (`product_discount` is not null  && `new_price` BETWEEN '.$request->segment(3).' AND  '.$request->segment(4).')')->where('category_id',$category->id)->count(); */
+				
+				$femaleProduct = Product::distinct('product_group')
+				->leftjoin('product_specification_type', 'product_specification_type.product_id', '=', 'products.id')
+				->leftjoin('product_category_styles', 'product_category_styles.product_id', '=', 'products.id')
+				->where('product_specification_type.value', 'like', 'f%')
+				->where('product_specification_type.specification_type_id', '11')
+				->where('product_category_styles.category_id', $category->id)
+				->where(function ($query) {
+                    $query->where('product_group_default', 1)->where('product_group', 1)->orWhere('product_group',  null);
+                })->where('products.category_id',$category->id)->where('products.is_active','1')->whereRaw('(products.product_discount is null  && products.old_price BETWEEN '.$request->segment(3).' AND  '.$request->segment(4).') or (products.product_discount is not null  && products.new_price BETWEEN '.$request->segment(3).' AND  '.$request->segment(4).')')->where('products.is_approved','1')->count();
+            
+                /* $uniSexProduct =  Product::distinct('product_group')->whereHas('specificationTypes', function ($query) use($category)  {
+                    $query->where('product_specification_type.value', 'like', 'u%')->where('name','LIKE','%Gender%');
+                })->whereHas('product_category_styles', function($query) use($category) {
+                    $query->where('category_id',$category->id);
+                })->where(function ($query) {
+                    $query->where('product_group_default', 1)->where('product_group', 1)->orWhere('product_group',  null);
+                })->where('is_active','1')->where('is_approved','1')->whereRaw('(`product_discount` is null  && `old_price` BETWEEN '.$request->segment(3).' AND  '.$request->segment(4).') or (`product_discount` is not null  && `new_price` BETWEEN '.$request->segment(3).' AND  '.$request->segment(4).')')->where('category_id',$category->id)->count(); */
+				
+				$uniSexProduct = Product::distinct('product_group')
+				->leftjoin('product_specification_type', 'product_specification_type.product_id', '=', 'products.id')
+				->leftjoin('product_category_styles', 'product_category_styles.product_id', '=', 'products.id')
+				->where('product_specification_type.value', 'like', 'u%')
+				->where('product_specification_type.specification_type_id', '11')
+				->where('product_category_styles.category_id', $category->id)
+				->where(function ($query) {
+                    $query->where('product_group_default', 1)->where('product_group', 1)->orWhere('product_group',  null);
+                })->where('products.category_id',$category->id)->where('products.is_active','1')->whereRaw('(products.product_discount is null  && products.old_price BETWEEN '.$request->segment(3).' AND  '.$request->segment(4).') or (products.product_discount is not null  && products.new_price BETWEEN '.$request->segment(3).' AND  '.$request->segment(4).')')->where('products.is_approved','1')->count();
 
             }
             
             
-             
+		}  
 
         } 
 
@@ -1863,13 +2437,743 @@ class FrontController extends Controller
         
         
         //dd($purity_eighteen_carat);
-       
+       if ($request->ajax() && !empty($request->all()) ) {
+                
+                $view = view('front.ajaxcategorypagination',compact('products'))->render();
+                return response()->json(['html'=>$view]);
+            }
         
        
 
      
           
-        return view('front.category', compact('products', 'category','banners_main_slider', 'banners_below_filters', 'banners_below_main_slider', 'banners_below_main_slider_2_images_layout', 'banners_below_main_slider_3_images_layout', 'sections_above_main_slider', 'sections_below_main_slider', 'sections_above_side_banners', 'sections_below_side_banners', 'sections_above_footer','maleProduct','femaleProduct','uniSexProduct','purity_eighteen_carat','purity_fourteen_carat','purity_twenty_two_carat','offerProduct','metal','plain','stone','beads'));
+        return view('front.category', compact('products', 'max_page', 'category','banners_main_slider', 'banners_below_filters', 'banners_below_main_slider', 'banners_below_main_slider_2_images_layout', 'banners_below_main_slider_3_images_layout', 'sections_above_main_slider', 'sections_below_main_slider', 'sections_above_side_banners', 'sections_below_side_banners', 'sections_above_footer','maleProduct','femaleProduct','uniSexProduct','purity_eighteen_carat','purity_fourteen_carat','purity_twenty_two_carat','offerProduct','metal','plain','stone','beads'));
+         
+
+         
+        
+        
+    }
+
+    public function befilterPrice(Request $request) {
+         \DB::connection()->enableQueryLog();
+        $category = Category::with('category')->where('slug', $request->segment(2))->where('is_active', 1)->firstOrFail();
+        $plain = 0;
+        $stone = 0;
+        $beads = 0;
+		$pagination_count = 20;
+        if($request->segment(3)=='men') {
+
+            
+			
+			$products =  Product::distinct('product_group')
+			->leftjoin('product_specification_type', 'product_specification_type.product_id', '=', 'products.id')
+			->leftjoin('product_category_styles', 'product_category_styles.product_id', '=', 'products.id')
+			->where('product_specification_type.value', 'like', 'm%')
+			->where('product_specification_type.specification_type_id', '11')
+			->where('product_category_styles.category_id',$category->id)
+			->where(function ($query) {
+                $query->where('products.product_group_default', 1)->where('products.product_group', 1)->orWhere('products.product_group',  null);
+            })->where('products.is_active','1')->where('products.is_approved','1')->where('products.category_id',$category->id)->orderBy('products.id','DESC')->get();
+
+            
+			
+			$plain = Product::distinct('product_group')
+			->leftjoin('product_specification_type', 'product_specification_type.product_id', '=', 'products.id')
+			->leftjoin('product_category_styles', 'product_category_styles.product_id', '=', 'products.id')
+			->where('product_specification_type.value', 'like', 'p%')
+			->where('product_specification_type.specification_type_id', '20')
+			->where('product_specification_type.value', 'like', 'm%')
+			->where('product_specification_type.specification_type_id', '11')
+			->where('product_category_styles.category_id',$category->id)
+			->where(function ($query) {
+                $query->where('products.product_group_default', 1)->where('products.product_group', 1)->orWhere('products.product_group',  null);
+            })->where('products.is_active','1')->where('products.is_approved','1')->where('products.category_id', $category->id)->count();
+			
+			
+            
+            
+			
+			$stone = Product::distinct('product_group')
+			->leftjoin('product_specification_type', 'product_specification_type.product_id', '=', 'products.id')
+			->leftjoin('product_category_styles', 'product_category_styles.product_id', '=', 'products.id')
+			->where('product_specification_type.value', 'like', 's%')
+			->where('product_specification_type.specification_type_id', '20')
+			->where('product_specification_type.value', 'like', 'm%')
+			->where('product_specification_type.specification_type_id', '11')
+			->where('product_category_styles.category_id',$category->id)
+			->where(function ($query) {
+                $query->where('products.product_group_default', 1)->where('products.product_group', 1)->orWhere('products.product_group',  null);
+            })->where('products.is_active','1')->where('products.is_approved','1')->where('products.category_id', $category->id)->count();
+
+            
+			
+			$beads = Product::distinct('product_group')
+			->leftjoin('product_specification_type', 'product_specification_type.product_id', '=', 'products.id')
+			->leftjoin('product_category_styles', 'product_category_styles.product_id', '=', 'products.id')
+			->where('product_specification_type.value', 'like', 'b%')
+			->where('product_specification_type.specification_type_id', '20')
+			->where('product_specification_type.value', 'like', 'm%')
+			->where('product_specification_type.specification_type_id', '11')
+			->where('product_category_styles.category_id',$category->id)
+			->where(function ($query) {
+                $query->where('products.product_group_default', 1)->where('products.product_group', 1)->orWhere('products.product_group',  null);
+            })->where('products.is_active','1')->where('products.is_approved','1')->where('products.category_id', $category->id)->count();
+
+        } elseif($request->segment(3)=='women') {
+
+            
+			
+			$products =  Product::distinct('product_group')
+			->leftjoin('product_specification_type', 'product_specification_type.product_id', '=', 'products.id')
+			->leftjoin('product_category_styles', 'product_category_styles.product_id', '=', 'products.id')
+			->where('product_specification_type.value', 'like', 'f%')
+			->where('product_specification_type.specification_type_id', '11')
+			->where('product_category_styles.category_id',$category->id)
+			->where(function ($query) {
+                $query->where('products.product_group_default', 1)->where('products.product_group', 1)->orWhere('products.product_group',  null);
+            })->where('products.is_active','1')->where('products.is_approved','1')->where('products.category_id',$category->id)->orderBy('products.id','DESC')->get();
+
+            
+			
+			$plain = Product::distinct('product_group')
+			->leftjoin('product_specification_type', 'product_specification_type.product_id', '=', 'products.id')
+			->leftjoin('product_category_styles', 'product_category_styles.product_id', '=', 'products.id')
+			->where('product_specification_type.value', 'like', 'p%')
+			->where('product_specification_type.specification_type_id', '20')
+			->where('product_specification_type.value', 'like', 'f%')
+			->where('product_specification_type.specification_type_id', '11')
+			->where('product_category_styles.category_id',$category->id)
+			->where(function ($query) {
+                $query->where('products.product_group_default', 1)->where('products.product_group', 1)->orWhere('products.product_group',  null);
+            })->where('products.is_active','1')->where('products.is_approved','1')->where('products.category_id', $category->id)->count();
+            
+            
+			
+			$stone = Product::distinct('product_group')
+			->leftjoin('product_specification_type', 'product_specification_type.product_id', '=', 'products.id')
+			->leftjoin('product_category_styles', 'product_category_styles.product_id', '=', 'products.id')
+			->where('product_specification_type.value', 'like', 's%')
+			->where('product_specification_type.specification_type_id', '20')
+			->where('product_specification_type.value', 'like', 'f%')
+			->where('product_specification_type.specification_type_id', '11')
+			->where('product_category_styles.category_id',$category->id)
+			->where(function ($query) {
+                $query->where('products.product_group_default', 1)->where('products.product_group', 1)->orWhere('products.product_group',  null);
+            })->where('products.is_active','1')->where('products.is_approved','1')->where('products.category_id', $category->id)->count();
+
+            
+			
+			$beads = Product::distinct('product_group')
+			->leftjoin('product_specification_type', 'product_specification_type.product_id', '=', 'products.id')
+			->leftjoin('product_category_styles', 'product_category_styles.product_id', '=', 'products.id')
+			->where('product_specification_type.value', 'like', 'b%')
+			->where('product_specification_type.specification_type_id', '20')
+			->where('product_specification_type.value', 'like', 'f%')
+			->where('product_specification_type.specification_type_id', '11')
+			->where('product_category_styles.category_id',$category->id)
+			->where(function ($query) {
+                $query->where('products.product_group_default', 1)->where('products.product_group', 1)->orWhere('products.product_group',  null);
+            })->where('products.is_active','1')->where('products.is_approved','1')->where('products.category_id', $category->id)->count();
+
+        } 
+        elseif($request->segment(3)=='kids') {
+            
+           
+			
+			$products =  Product::distinct('product_group')
+			->leftjoin('product_specification_type', 'product_specification_type.product_id', '=', 'products.id')
+			->leftjoin('product_category_styles', 'product_category_styles.product_id', '=', 'products.id')
+			->where('product_specification_type.value', 'like', 'k%')
+			->where('product_specification_type.specification_type_id', '11')
+			->where('product_category_styles.category_id',$category->id)
+			->where(function ($query) {
+                $query->where('products.product_group_default', 1)->where('products.product_group', 1)->orWhere('products.product_group',  null);
+            })->where('products.is_active','1')->where('products.is_approved','1')->where('products.category_id',$category->id)->orderBy('products.id','DESC')->get();
+             
+           
+			
+			$plain = Product::distinct('product_group')
+			->leftjoin('product_specification_type', 'product_specification_type.product_id', '=', 'products.id')
+			->leftjoin('product_category_styles', 'product_category_styles.product_id', '=', 'products.id')
+			->where('product_specification_type.value', 'like', 'p%')
+			->where('product_specification_type.specification_type_id', '20')
+			->where('product_specification_type.value', 'like', 'k%')
+			->where('product_specification_type.specification_type_id', '11')
+			->where('product_category_styles.category_id',$category->id)
+			->where(function ($query) {
+                $query->where('products.product_group_default', 1)->where('products.product_group', 1)->orWhere('products.product_group',  null);
+            })->where('products.is_active','1')->where('products.is_approved','1')->where('products.category_id', $category->id)->count();
+            
+            
+			
+			$stone = Product::distinct('product_group')
+			->leftjoin('product_specification_type', 'product_specification_type.product_id', '=', 'products.id')
+			->leftjoin('product_category_styles', 'product_category_styles.product_id', '=', 'products.id')
+			->where('product_specification_type.value', 'like', 's%')
+			->where('product_specification_type.specification_type_id', '20')
+			->where('product_specification_type.value', 'like', 'k%')
+			->where('product_specification_type.specification_type_id', '11')
+			->where('product_category_styles.category_id',$category->id)
+			->where(function ($query) {
+                $query->where('products.product_group_default', 1)->where('products.product_group', 1)->orWhere('products.product_group',  null);
+            })->where('products.is_active','1')->where('products.is_approved','1')->where('products.category_id', $category->id)->count();
+
+            
+			
+			$beads = Product::distinct('product_group')
+			->leftjoin('product_specification_type', 'product_specification_type.product_id', '=', 'products.id')
+			->leftjoin('product_category_styles', 'product_category_styles.product_id', '=', 'products.id')
+			->where('product_specification_type.value', 'like', 'b%')
+			->where('product_specification_type.specification_type_id', '20')
+			->where('product_specification_type.value', 'like', 'k%')
+			->where('product_specification_type.specification_type_id', '11')
+			->where('product_category_styles.category_id',$category->id)
+			->where(function ($query) {
+                $query->where('products.product_group_default', 1)->where('products.product_group', 1)->orWhere('products.product_group',  null);
+            })->where('products.is_active','1')->where('products.is_approved','1')->where('products.category_id', $category->id)->count();
+
+
+        }
+         else {
+            if($request->segment(3)!='' && $request->segment(4)=='') {
+              	
+
+
+				
+				
+				 $products =  Product::distinct('product_group')
+				->leftjoin('product_category_styles', 'product_category_styles.product_id', '=', 'products.id')
+				->where('product_category_styles.category_id', $category->id)
+				->where(function ($query) {
+                    $query->where('products.product_group_default', 1)->where('products.product_group', 1)->orWhere('products.product_group',  null);
+                })->where('products.is_active','1')->where('products.is_approved','1')->whereRaw('(products.product_discount is null  && products.old_price > '.$request->segment(3).' ) or (products.product_discount is not null  && products.new_price > '.$request->segment(3).' )')->where('products.category_id',$category->id)->skip(0)->take($pagination_count)->orderBy('products.id','DESC')->get();
+				
+				$productsCount =  Product::distinct('product_group')
+				->leftjoin('product_category_styles', 'product_category_styles.product_id', '=', 'products.id')
+				->where('product_category_styles.category_id', $category->id)
+				->where(function ($query) {
+                    $query->where('products.product_group_default', 1)->where('products.product_group', 1)->orWhere('products.product_group',  null);
+                })->where('products.is_active','1')->where('products.is_approved','1')->whereRaw('(products.product_discount is null  && products.old_price > '.$request->segment(3).' ) or (products.product_discount is not null  && products.new_price > '.$request->segment(3).' )')->where('products.category_id',$category->id)->skip(0)->take($pagination_count)->orderBy('products.id','DESC')->count();
+                
+            } else {
+                
+                 
+                
+                
+                $products =  Product::distinct('product_group')
+				->leftjoin('product_category_styles', 'product_category_styles.product_id', '=', 'products.id')
+				->where('product_category_styles.category_id', $category->id)
+				
+				->where(function ($query) {
+                    $query->where('products.product_group_default', 1)->where('products.product_group', 1)->orWhere('products.product_group',  null);
+                })->where('products.is_active','1')->where('products.is_approved','1')->whereRaw('(products.product_discount is null  && products.old_price BETWEEN '.$request->segment(3).' AND  '.$request->segment(4).') or (products.product_discount is not null  && products.new_price BETWEEN '.$request->segment(3).' AND  '.$request->segment(4).')')->where('products.category_id',$category->id)->orderBy('products.id','DESC')->skip(0)->take($pagination_count)->get();
+				
+				$productsCount =  Product::distinct('product_group')
+				->leftjoin('product_category_styles', 'product_category_styles.product_id', '=', 'products.id')
+				->where('product_category_styles.category_id', $category->id)
+				
+				->where(function ($query) {
+                    $query->where('products.product_group_default', 1)->where('products.product_group', 1)->orWhere('products.product_group',  null);
+                })->where('products.is_active','1')->where('products.is_approved','1')->whereRaw('(products.product_discount is null  && products.old_price BETWEEN '.$request->segment(3).' AND  '.$request->segment(4).') or (products.product_discount is not null  && products.new_price BETWEEN '.$request->segment(3).' AND  '.$request->segment(4).')')->where('products.category_id',$category->id)->orderBy('products.id','DESC')->count();
+				
+
+            }
+        }
+        
+        
+        
+         
+        
+        
+        
+             
+        // $product_max_price = $products->max('price');
+        /* $products = $products->paginate($pagination_count);
+		$max_page = $products->total() / $pagination_count; */
+		
+		//echo $productsCount;
+		//print_r($products);
+		$products = $products->paginate($pagination_count);
+		$max_page = $productsCount / $pagination_count;
+		//print_r($products);
+        $debugQry = \DB::getQueryLog();
+		print_r($debugQry);
+        $banners = $category->banners()->where('is_active', 1)->get();
+        $sections = $category->sections()->where('is_active', 1)->get();
+         
+        $banners_main_slider = $banners->filter(function($banner) {
+            return $banner->position_category == 'Main Slider';
+        });
+        $banners_below_filters = $banners->filter(function($banner) {
+            return $banner->position_category == 'Below Filters';
+        });
+        $banners_below_main_slider = $banners->filter(function($banner) {
+            return $banner->position_category == 'Below Main Slider';
+        });
+        $banners_below_main_slider_2_images_layout = $banners->filter(function($banner) {
+            return $banner->position_category == 'Below Main Slider - Two Images per row';
+        });
+        $banners_below_main_slider_3_images_layout = $banners->filter(function($banner) {
+            return $banner->position_category == 'Below Main Slider - Three Images Layout';
+        });
+
+        $sections_above_main_slider = $sections->filter(function($section) {
+            return $section->position_category == 'Above Main Slider';
+        });
+        $sections_below_main_slider = $sections->filter(function($section) {
+            return $section->position_category == 'Below Main Slider';
+        });
+        $sections_above_side_banners = $sections->filter(function($section) {
+            return $section->position_category == 'Above Side Banners';
+        });
+        $sections_below_side_banners = $sections->filter(function($section) {
+            return $section->position_category == 'Below Side Banners';
+        });
+        $sections_above_footer = $sections->filter(function($section) {
+            return $section->position_category == 'Above Footer';
+        });
+        
+         
+             
+        if($category->category_id=='0') { 
+
+            
+			
+			
+			$maleProduct =  Product::distinct('product_group')
+			->leftjoin('product_specification_type', 'product_specification_type.product_id', '=', 'products.id')
+			->leftjoin('product_category_styles', 'product_category_styles.product_id', '=', 'products.id')
+			->where('product_specification_type.value', 'like', 'm%')
+			->where('product_specification_type.specification_type_id', '11')
+			->where('product_category_styles.category_id', $category->id)
+			->where(function ($query) {
+                $query->where('products.product_group_default', 1)->where('products.product_group', 1)->orWhere('products.product_group',  null);
+            })->where('products.is_active','1')->where('products.is_approved','1')->where('products.category_id',$category->id)->count();
+			
+
+         } else {
+
+           
+			  
+			  
+			  $maleProduct =  Product::distinct('product_group')
+			->leftjoin('product_specification_type', 'product_specification_type.product_id', '=', 'products.id')
+			->leftjoin('product_category_styles', 'product_category_styles.product_id', '=', 'products.id')
+			->where('product_specification_type.value', 'like', 'm%')
+			->where('product_specification_type.specification_type_id', '11')
+			->where('product_category_styles.category_id', $category->category_id)
+			->where('product_category_styles.product_style_id', $category->id)
+			->where(function ($query) {
+                $query->where('products.product_group_default', 1)->where('products.product_group', 1)->orWhere('products.product_group',  null);
+            })->where('products.is_active','1')->where('products.is_approved','1')->where('products.category_id',$category->category_id)->count();
+
+              
+
+
+
+             
+         }
+         
+         if($category->category_id=='0') { 
+            
+           
+             
+            $femaleProduct =  Product::distinct('product_group')
+			->leftjoin('product_specification_type', 'product_specification_type.product_id', '=', 'products.id')
+			->leftjoin('product_category_styles', 'product_category_styles.product_id', '=', 'products.id')
+			->where('product_specification_type.value', 'like', 'f%')
+			->where('product_specification_type.specification_type_id', '11')
+			->where('product_category_styles.category_id', $category->id)
+			->where(function ($query) {
+                $query->where('products.product_group_default', 1)->where('products.product_group', 1)->orWhere('products.product_group',  null);
+            })->where('products.is_active','1')->where('products.is_approved','1')->where('products.category_id',$category->id)->count();
+
+         } else {
+
+            
+           
+
+            $femaleProduct =  Product::select(\DB::raw('count(*) as totalFemale'))->distinct('product_group')
+			->leftjoin('product_specification_type', 'product_specification_type.product_id', '=', 'products.id')
+			->leftjoin('product_category_styles', 'product_category_styles.product_id', '=', 'products.id')
+			->where('product_specification_type.value', 'like', 'f%')
+			->where('product_specification_type.specification_type_id', '11')
+			->where('product_category_styles.category_id', $category->category_id)
+			->where('product_category_styles.product_style_id', $category->id)
+			->where(function ($query) {
+                $query->where('products.product_group_default', 1)->where('products.product_group', 1)->orWhere('products.product_group',  null);
+            })->where('products.is_active','1')->where('products.is_approved','1')->where('products.category_id',$category->category_id)->count();
+
+
+            
+         }
+
+         if($category->category_id=='0') { 
+
+            if($category->slug == 'gift-item') { 
+
+                
+				  
+				  
+				  $kidsProduct =  Product::distinct('product_group')
+				  ->leftjoin('product_specification_type', 'product_specification_type.product_id', '=', 'products.id')
+				->leftjoin('product_category_styles', 'product_category_styles.product_id', '=', 'products.id')
+				->where('product_specification_type.value', 'like', 'k%')
+				->where('product_specification_type.specification_type_id', '11')
+				->whereIn('product_category_styles.category_id', array(1,12))
+				->whereIn('product_category_styles.product_style_id', array( 31, 30,42,40,41,70))
+				->where(function ($query) {
+                    $query->where('products.product_group_default', 1)->where('products.product_group', 1)->orWhere('products.product_group',  null);
+                  })->where('products.is_active','1')->where('products.is_approved','1')->whereIn('products.category_id', array(1,12))->count();
+				
+
+            } else {
+                
+				  $kidsProduct =  Product::distinct('product_group')
+				  ->leftjoin('product_specification_type', 'product_specification_type.product_id', '=', 'products.id')
+				->leftjoin('product_category_styles', 'product_category_styles.product_id', '=', 'products.id')
+				->where('product_specification_type.value', 'like', 'k%')
+				->where('product_specification_type.specification_type_id', '11')
+				->where('product_category_styles.category_id', $category->id)
+				->where(function ($query) {
+                    $query->where('products.product_group_default', 1)->where('products.product_group', 1)->orWhere('products.product_group',  null);
+                  })->where('products.is_active','1')->where('products.is_approved','1')->where('products.category_id',$category->id)->count();
+				
+				  
+				
+            }   
+
+            
+
+            
+            
+
+        } else {
+
+            if($category->slug == 'gift-item') { 
+
+               
+				  
+				  $kidsProduct =  Product::distinct('product_group')
+				  ->leftjoin('product_specification_type', 'product_specification_type.product_id', '=', 'products.id')
+				->leftjoin('product_category_styles', 'product_category_styles.product_id', '=', 'products.id')
+				->where('product_specification_type.value', 'like', 'k%')
+				->where('product_specification_type.specification_type_id', '11')
+				->whereIn('product_category_styles.category_id', array(1,12))
+				->whereIn('product_category_styles.product_style_id', array( 31, 30,42,40,41,70))
+				->where(function ($query) {
+                    $query->where('products.product_group_default', 1)->where('products.product_group', 1)->orWhere('products.product_group',  null);
+                  })->where('products.is_active','1')->where('products.is_approved','1')->whereIn('products.category_id', array(1,12))->count();
+				  
+
+            } else {
+               
+				  
+				  $kidsProduct =  Product::distinct('product_group')
+				  ->leftjoin('product_specification_type', 'product_specification_type.product_id', '=', 'products.id')
+				->leftjoin('product_category_styles', 'product_category_styles.product_id', '=', 'products.id')
+				->where('product_specification_type.value', 'like', 'k%')
+				->where('product_specification_type.specification_type_id', '11')
+				->where('product_category_styles.category_id', $category->category_id)
+				->where('product_category_styles.product_style_id', $category->id)
+				->where(function ($query) {
+                    $query->where('products.product_group_default', 1)->where('products.product_group', 1)->orWhere('products.product_group',  null);
+                  })->where('products.is_active','1')->where('products.is_approved','1')->where('products.category_id', $category->category_id)->count();
+				  
+            }
+        }
+
+        if($category->category_id=='0') { 
+
+            if($category->slug == 'gift-item') { 
+
+                
+				  
+				  $uniSexProduct =  Product::distinct('product_group')
+				  ->leftjoin('product_specification_type', 'product_specification_type.product_id', '=', 'products.id')
+				->leftjoin('product_category_styles', 'product_category_styles.product_id', '=', 'products.id')
+				->where('product_specification_type.value', 'like', 'u%')
+				->where('product_specification_type.specification_type_id', '11')
+				->whereIn('product_category_styles.category_id', array(1,12))
+				->whereIn('product_category_styles.product_style_id', array( 31, 30,42,40,41,70))
+				->where(function ($query) {
+                    $query->where('products.product_group_default', 1)->where('products.product_group', 1)->orWhere('products.product_group',  null);
+                  })->where('products.is_active','1')->where('products.is_approved','1')->whereIn('products.category_id', array(1,12))->count();
+
+            } else {
+                
+				  
+				  
+				  $uniSexProduct =  Product::distinct('product_group')
+				  ->leftjoin('product_specification_type', 'product_specification_type.product_id', '=', 'products.id')
+				->leftjoin('product_category_styles', 'product_category_styles.product_id', '=', 'products.id')
+				->where('product_specification_type.value', 'like', 'u%')
+				->where('product_specification_type.specification_type_id', '11')
+				->where('product_category_styles.category_id', $category->id)
+				->where(function ($query) {
+                    $query->where('products.product_group_default', 1)->where('products.product_group', 1)->orWhere('products.product_group',  null);
+                  })->where('products.is_active','1')->where('products.is_approved','1')->where('products.category_id', $category->id)->count();
+            }
+
+            
+
+               
+            
+
+         } else {
+
+            if($category->slug == 'gift-item') { 
+
+                
+				  
+				  $uniSexProduct =  Product::distinct('product_group')
+				  ->leftjoin('product_specification_type', 'product_specification_type.product_id', '=', 'products.id')
+				->leftjoin('product_category_styles', 'product_category_styles.product_id', '=', 'products.id')
+				->where('product_specification_type.value', 'like', 'u%')
+				->where('product_specification_type.specification_type_id', '11')
+				->whereIn('product_category_styles.category_id', array(1,12))
+				->whereIn('product_category_styles.product_style_id', array( 31, 30,42,40,41,70))
+				->where(function ($query) {
+                    $query->where('products.product_group_default', 1)->where('products.product_group', 1)->orWhere('products.product_group',  null);
+                  })->where('products.is_active','1')->where('products.is_approved','1')->whereIn('products.category_id', array(1,12))->count();
+
+            } else {
+                
+				  
+				  $uniSexProduct =  Product::distinct('product_group')
+				  ->leftjoin('product_specification_type', 'product_specification_type.product_id', '=', 'products.id')
+				->leftjoin('product_category_styles', 'product_category_styles.product_id', '=', 'products.id')
+				->where('product_specification_type.value', 'like', 'u%')
+				->where('product_specification_type.specification_type_id', '11')
+				->where('product_category_styles.category_id', $category->category_id)
+				->where('product_category_styles.product_style_id', $category->id)
+				->where(function ($query) {
+                    $query->where('products.product_group_default', 1)->where('products.product_group', 1)->orWhere('products.product_group',  null);
+                  })->where('products.is_active','1')->where('products.is_approved','1')->where('products.category_id', $category->category_id)->count();
+            }
+            
+             
+            
+
+
+            
+         }
+
+        
+
+        
+        
+        if($category->category_id=='0') {
+				if($request->segment(3) == 'men'){
+					
+		}elseif($request->segment(3) == 'women'){
+			
+		}elseif($request->segment(3) == 'kids'){
+			
+		}else {
+
+            if($request->segment(3)!='' && $request->segment(4)=='') {
+                
+                
+				$offerProduct =  Product::distinct('product_group')
+				->leftjoin('product_category_styles', 'product_category_styles.product_id', '=', 'products.id')
+				->where('product_category_styles.category_id', $category->id)
+				->where(function ($query) {
+                    $query->where('products.product_group_default', 1)->where('products.product_group', 1)->orWhere('products.product_group',  null);
+                })->where('products.product_discount','<>',false)->where('products.is_active','1')->where('products.is_approved','1')->whereRaw('(products.product_discount is null  && products.old_price > '.$request->segment(3).' ) or (products.product_discount is not null  && products.new_price > '.$request->segment(3).' )')->where('products.category_id',$category->id)->count();
+				
+				
+
+                
+				$purity_eighteen_carat = Product::leftjoin('product_specification_type', 'product_specification_type.product_id', '=', 'products.id')
+				->leftjoin('product_category_styles', 'product_category_styles.product_id', '=', 'products.id')
+				->where('product_specification_type.value', '18')
+				->where('product_specification_type.specification_type_id', '9')
+				->where('product_category_styles.category_id', $category->id)
+				->where(function ($query) {
+                    $query->where('products.product_group_default', 1)->where('products.product_group', 1)->orWhere('products.product_group',  null);
+                })->where('products.category_id',$category->id)->where('products.is_active','1')->whereRaw('(products.product_discount is null  && products.old_price > '.$request->segment(3).' ) or (products.product_discount is not null  && products.new_price > '.$request->segment(3).' )')->where('products.is_approved','1')->get();
+				
+				
+				
+                
+               
+				$purity_fourteen_carat = Product::leftjoin('product_specification_type', 'product_specification_type.product_id', '=', 'products.id')
+				->leftjoin('product_category_styles', 'product_category_styles.product_id', '=', 'products.id')
+				->where('product_specification_type.value', '14')
+				->where('product_specification_type.specification_type_id', '9')
+				->where('product_category_styles.category_id', $category->id)
+				->where(function ($query) {
+                    $query->where('products.product_group_default', 1)->where('products.product_group', 1)->orWhere('products.product_group',  null);
+                })->where('products.category_id',$category->id)->where('products.is_active','1')->whereRaw('(products.product_discount is null  && products.old_price > '.$request->segment(3).' ) or (products.product_discount is not null  && products.new_price > '.$request->segment(3).' )')->where('products.is_approved','1')->get();
+				
+
+                
+				
+				$purity_twenty_two_carat = Product::leftjoin('product_specification_type', 'product_specification_type.product_id', '=', 'products.id')
+				->leftjoin('product_category_styles', 'product_category_styles.product_id', '=', 'products.id')
+				->where('product_specification_type.value', '22')
+				->where('product_specification_type.specification_type_id', '9')
+				->where('product_category_styles.category_id', $category->id)
+				->where(function ($query) {
+                    $query->where('products.product_group_default', 1)->where('products.product_group', 1)->orWhere('products.product_group',  null);
+                })->where('products.category_id',$category->id)->where('products.is_active','1')->whereRaw('(products.product_discount is null  && products.old_price > '.$request->segment(3).' ) or (products.product_discount is not null  && products.new_price > '.$request->segment(3).' )')->where('products.is_approved','1')->get();
+                
+
+                
+				$metal =  Product::with('category')
+				->leftjoin('product_category_styles', 'product_category_styles.product_id', '=', 'products.id')
+				->where('product_category_styles.category_id', $category->id)
+				->where(function ($query) {
+                    $query->where('products.product_group_default', 1)->where('products.product_group', 1)->orWhere('products.product_group',  null);
+                })->where('products.is_active','1')->where('products.is_approved','1')->where('products.category_id',$category->id)->get();
+				
+                
+
+                
+				$maleProduct =  Product::distinct('product_group')
+				->leftjoin('product_specification_type', 'product_specification_type.product_id', '=', 'products.id')
+				->leftjoin('product_category_styles', 'product_category_styles.product_id', '=', 'products.id')
+				->where('product_specification_type.value', 'like', 'm%')
+				->where('product_specification_type.specification_type_id', '11')
+				->where('product_category_styles.category_id', $category->id)
+				->where(function ($query) {
+                    $query->where('products.product_group_default', 1)->where('products.product_group', 1)->orWhere('products.product_group',  null);
+                })->where('products.is_active','1')->where('products.is_approved','1')->whereRaw('(products.product_discount is null  && products.old_price > '.$request->segment(3).' ) or (products.product_discount is not null  && products.new_price > '.$request->segment(3).' )')->where('products.category_id',$category->id)->count();
+				
+
+                
+				$femaleProduct =  Product::distinct('product_group')
+				->leftjoin('product_specification_type', 'product_specification_type.product_id', '=', 'products.id')
+				->leftjoin('product_category_styles', 'product_category_styles.product_id', '=', 'products.id')
+				->where('product_specification_type.value', 'like', 'f%')
+				->where('product_specification_type.specification_type_id', '11')
+				->where('product_category_styles.category_id', $category->id)
+				->where(function ($query) {
+                    $query->where('products.product_group_default', 1)->where('products.product_group', 1)->orWhere('products.product_group',  null);
+                })->where('products.is_active','1')->where('products.is_approved','1')->whereRaw('(products.product_discount is null  && products.old_price > '.$request->segment(3).' ) or (products.product_discount is not null  && products.new_price > '.$request->segment(3).' )')->where('products.category_id',$category->id)->count();
+
+
+                
+				$uniSexProduct =  Product::distinct('product_group')
+				->leftjoin('product_specification_type', 'product_specification_type.product_id', '=', 'products.id')
+				->leftjoin('product_category_styles', 'product_category_styles.product_id', '=', 'products.id')
+				->where('product_specification_type.value', 'like', 'u%')
+				->where('product_specification_type.specification_type_id', '11')
+				->where('product_category_styles.category_id', $category->id)
+				->where(function ($query) {
+                    $query->where('products.product_group_default', 1)->where('products.product_group', 1)->orWhere('products.product_group',  null);
+                })->where('products.is_active','1')->where('products.is_approved','1')->whereRaw('(products.product_discount is null  && products.old_price > '.$request->segment(3).' ) or (products.product_discount is not null  && products.new_price > '.$request->segment(3).' )')->where('products.category_id',$category->id)->count();
+                
+                
+            } else {
+               
+				  
+				  $offerProduct =  Product::distinct('product_group')
+				->leftjoin('product_category_styles', 'product_category_styles.product_id', '=', 'products.id')
+				->where('product_category_styles.category_id', $category->id)
+				->where(function ($query) {
+                    $query->where('products.product_group_default', 1)->where('products.product_group', 1)->orWhere('products.product_group',  null);
+                  })->where('products.product_discount','<>',false)->where('products.is_active','1')->where('products.is_approved','1')->whereRaw('(products.product_discount is null  && products.old_price BETWEEN '.$request->segment(3).' AND  '.$request->segment(4).') or (products.product_discount is not null  && products.new_price BETWEEN '.$request->segment(3).' AND  '.$request->segment(4).')')->where('products.category_id',$category->id)->count();
+
+               
+				$purity_eighteen_carat = Product::leftjoin('product_specification_type', 'product_specification_type.product_id', '=', 'products.id')
+				->leftjoin('product_category_styles', 'product_category_styles.product_id', '=', 'products.id')
+				->where('product_specification_type.value', '18')
+				->where('product_specification_type.specification_type_id', '9')
+				->where('product_category_styles.category_id', $category->id)
+				->where(function ($query) {
+                    $query->where('product_group_default', 1)->where('product_group', 1)->orWhere('product_group',  null);
+                })->where('products.category_id',$category->id)->where('products.is_active','1')->whereRaw('(products.product_discount is null  && products.old_price BETWEEN '.$request->segment(3).' AND  '.$request->segment(4).') or (products.product_discount is not null  && products.new_price BETWEEN '.$request->segment(3).' AND  '.$request->segment(4).')')->where('products.is_approved','1')->get();
+				
+                
+               
+				
+				$purity_fourteen_carat = Product::leftjoin('product_specification_type', 'product_specification_type.product_id', '=', 'products.id')
+				->leftjoin('product_category_styles', 'product_category_styles.product_id', '=', 'products.id')
+				->where('product_specification_type.value', '14')
+				->where('product_specification_type.specification_type_id', '9')
+				->where('product_category_styles.category_id', $category->id)
+				->where(function ($query) {
+                    $query->where('product_group_default', 1)->where('product_group', 1)->orWhere('product_group',  null);
+                })->where('products.category_id',$category->id)->where('products.is_active','1')->whereRaw('(products.product_discount is null  && products.old_price BETWEEN '.$request->segment(3).' AND  '.$request->segment(4).') or (products.product_discount is not null  && products.new_price BETWEEN '.$request->segment(3).' AND  '.$request->segment(4).')')->where('products.is_approved','1')->get();
+            
+                
+              
+				$purity_twenty_two_carat = Product::leftjoin('product_specification_type', 'product_specification_type.product_id', '=', 'products.id')
+				->leftjoin('product_category_styles', 'product_category_styles.product_id', '=', 'products.id')
+				->where('product_specification_type.value', '22')
+				->where('product_specification_type.specification_type_id', '9')
+				->where('product_category_styles.category_id', $category->id)
+				->where(function ($query) {
+                    $query->where('product_group_default', 1)->where('product_group', 1)->orWhere('product_group',  null);
+                })->where('products.category_id',$category->id)->where('products.is_active','1')->whereRaw('(products.product_discount is null  && products.old_price BETWEEN '.$request->segment(3).' AND  '.$request->segment(4).') or (products.product_discount is not null  && products.new_price BETWEEN '.$request->segment(3).' AND  '.$request->segment(4).')')->where('products.is_approved','1')->get();
+
+                 
+				  $metal =  Product::with('category')
+				  ->leftjoin('product_category_styles', 'product_category_styles.product_id', '=', 'products.id')
+				  ->where('product_category_styles.category_id',$category->id)
+				  ->where(function ($query) {
+                    $query->where('products.product_group_default', 1)->where('products.product_group', 1)->orWhere('products.product_group',  null);
+                  })->where('products.is_active','1')->where('products.is_approved','1')->whereRaw('(products.product_discount is null  && products.old_price BETWEEN '.$request->segment(3).' AND  '.$request->segment(4).') or (products.product_discount is not null  && products.new_price BETWEEN '.$request->segment(3).' AND  '.$request->segment(4).')')->where('products.category_id',$category->id)->get();
+				  
+                
+                
+				$maleProduct = Product::distinct('product_group')
+				->leftjoin('product_specification_type', 'product_specification_type.product_id', '=', 'products.id')
+				->leftjoin('product_category_styles', 'product_category_styles.product_id', '=', 'products.id')
+				->where('product_specification_type.value', 'like', 'm%')
+				->where('product_specification_type.specification_type_id', '11')
+				->where('product_category_styles.category_id', $category->id)
+				->where(function ($query) {
+                    $query->where('product_group_default', 1)->where('product_group', 1)->orWhere('product_group',  null);
+                })->where('products.category_id',$category->id)->where('products.is_active','1')->whereRaw('(products.product_discount is null  && products.old_price BETWEEN '.$request->segment(3).' AND  '.$request->segment(4).') or (products.product_discount is not null  && products.new_price BETWEEN '.$request->segment(3).' AND  '.$request->segment(4).')')->where('products.is_approved','1')->count();
+				
+
+                
+				$femaleProduct = Product::distinct('product_group')
+				->leftjoin('product_specification_type', 'product_specification_type.product_id', '=', 'products.id')
+				->leftjoin('product_category_styles', 'product_category_styles.product_id', '=', 'products.id')
+				->where('product_specification_type.value', 'like', 'f%')
+				->where('product_specification_type.specification_type_id', '11')
+				->where('product_category_styles.category_id', $category->id)
+				->where(function ($query) {
+                    $query->where('product_group_default', 1)->where('product_group', 1)->orWhere('product_group',  null);
+                })->where('products.category_id',$category->id)->where('products.is_active','1')->whereRaw('(products.product_discount is null  && products.old_price BETWEEN '.$request->segment(3).' AND  '.$request->segment(4).') or (products.product_discount is not null  && products.new_price BETWEEN '.$request->segment(3).' AND  '.$request->segment(4).')')->where('products.is_approved','1')->count();
+            
+                
+				$uniSexProduct = Product::distinct('product_group')
+				->leftjoin('product_specification_type', 'product_specification_type.product_id', '=', 'products.id')
+				->leftjoin('product_category_styles', 'product_category_styles.product_id', '=', 'products.id')
+				->where('product_specification_type.value', 'like', 'u%')
+				->where('product_specification_type.specification_type_id', '11')
+				->where('product_category_styles.category_id', $category->id)
+				->where(function ($query) {
+                    $query->where('product_group_default', 1)->where('product_group', 1)->orWhere('product_group',  null);
+                })->where('products.category_id',$category->id)->where('products.is_active','1')->whereRaw('(products.product_discount is null  && products.old_price BETWEEN '.$request->segment(3).' AND  '.$request->segment(4).') or (products.product_discount is not null  && products.new_price BETWEEN '.$request->segment(3).' AND  '.$request->segment(4).')')->where('products.is_approved','1')->count();
+
+            }
+            
+            
+		}  
+
+        } 
+
+        
+        
+       
+       if ($request->ajax() && !empty($request->all()) ) {
+                
+                $view = view('front.ajaxcategorypagination',compact('products'))->render();
+                return response()->json(['html'=>$view]);
+            }
+        
+       
+
+     
+          
+        return view('front.category', compact('products', 'max_page', 'category','banners_main_slider', 'banners_below_filters', 'banners_below_main_slider', 'banners_below_main_slider_2_images_layout', 'banners_below_main_slider_3_images_layout', 'sections_above_main_slider', 'sections_below_main_slider', 'sections_above_side_banners', 'sections_below_side_banners', 'sections_above_footer','maleProduct','femaleProduct','uniSexProduct','purity_eighteen_carat','purity_fourteen_carat','purity_twenty_two_carat','offerProduct','metal','plain','stone','beads'));
          
 
          

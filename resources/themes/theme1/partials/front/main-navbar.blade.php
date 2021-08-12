@@ -1092,7 +1092,7 @@
             setTimeout(function() {
               $("#VerifyMsg").slideUp();
 			  location.reload();
-              }, 10000);
+              }, 3000);
                
           }
         }
