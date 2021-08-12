@@ -16,7 +16,7 @@ use App\ProductCategoryStyle;
 class FrontProductController extends Controller
 {
     public function show($slug) {
-		 
+		 //\DB::connection()->enableQueryLog();
         $product = Product::with('specificationTypes','product_category_styles','metal','certificate_products','category.categories','silverItem')->where('slug', $slug)->where('is_active', 1)->firstOrFail();
 		 
 		 
@@ -106,12 +106,12 @@ class FrontProductController extends Controller
 		  $minProductPrice = $productPrice ? $productPrice - 5000 : 1 ;
 		  $maxProductPrice = $productPrice ? $productPrice + 5000 : '' ;
 		
-		$SimilarProductID = Product::whereHas('product_category_styles', function($query) use($product) {
+		/* $SimilarProductID = Product::whereHas('product_category_styles', function($query) use($product) {
 			$query->where('category_id', $product->category_id)->where('product_style_id', $product->product_category_styles[0]->product_style_id);
 		})->whereNotIn('id', [$product->id])->whereRaw('(`product_discount` is null  && `old_price` >= '.$minProductPrice.' && `old_price` <= '.$maxProductPrice.' ) or (`product_discount` is not null  && `new_price` >= '.$minProductPrice.' &&  `new_price` <= '.$maxProductPrice.')')->where('category_id', $product->category_id)->where('is_active', 1)->get();
 
 		$productIDArr = [];
-		if(!empty($SimilarProductID)) {
+		if(!empty($SimilarProductID)) {		
 
 			foreach($SimilarProductID AS $value) {
 				$productIDArr[]= $value->id;
@@ -121,12 +121,20 @@ class FrontProductController extends Controller
 
 		$similarProduct = Product::whereHas('product_category_styles', function($query) use($product,$productIDArr) {
 			$query->where('category_id', $product->category_id)->where('product_style_id', $product->product_category_styles[0]->product_style_id)->whereIn('product_id',$productIDArr);
-		})->whereNotIn('id', [$product->id])->where('is_active', 1)->get();
+		})->whereNotIn('id', [$product->id])->where('is_active', 1)->get(); */
+		
+		
+		
+		
+		$similarProduct = Product::whereHas('product_category_styles', function($query) use($product) {
+			$query->where('category_id', $product->category_id)->where('product_style_id', $product->product_category_styles[0]->product_style_id);
+		})->whereNotIn('id', [$product->id])->whereRaw('(`product_discount` is null  && `old_price` >= '.$minProductPrice.' && `old_price` <= '.$maxProductPrice.' ) or (`product_discount` is not null  && `new_price` >= '.$minProductPrice.' &&  `new_price` <= '.$maxProductPrice.')')->where('category_id', $product->category_id)->where('is_active', 1)->get();
 		  
 		// $similarProduct = Product::whereHas('product_category_styles', function($query) use($product) {
 		// 	$query->where('category_id', $product->category_id)->where('product_style_id', $product->product_category_styles[0]->product_style_id);
 		// })->where('category_id', $product->category_id)->whereNotIn('id', [$product->id])->whereRaw('old_price >= '.$lesdProductPrice.'')->whereRaw('old_price <= '.$productPrice.'')->where('is_active', 1)->get();
-		  
+		  //$debugQry = \DB::getQueryLog();
+		//print_r($debugQry);
 		// return view('front.product', compact('product', 'variants', 'related_products_category_brand', 'comparision_products', 'comparision_group_types', 'sections_above_deal_slider', 'sections_below_deal_slider', 'sections_above_footer','groupSizeArr','groupPurityArr','similarProduct'));
 		return view('front.product', compact('product', 'variants',   'sections_above_deal_slider', 'sections_below_deal_slider', 'sections_above_footer','groupSizeArr','groupPurityArr','similarProduct','category'));
 	}

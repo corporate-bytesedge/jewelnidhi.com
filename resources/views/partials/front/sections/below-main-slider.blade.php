@@ -1,7 +1,7 @@
 <div class="marquee-sec">
      <div class="container">
        <marquee>
-        Your online trusted store to buy gold  at wholesale prices, for more details  please contact <a href="#">info@jewelnidhi.com</a> 9949016121
+        Your online trusted store to buy gold  at wholesale prices, for more details  please contact <a href="mailto:info@jewelnidhi.com">info@jewelnidhi.com</a> <a href="tel:9949016121">9949016121</a>
        </marquee>
      </div>
    </div>
