@@ -224,13 +224,24 @@ class Category extends Model
                         $query->where('product_group_default', 1)->where('product_group', 1)->orWhere('product_group',  null);
                     })->where('is_active','1')->where('is_approved','1')->where('category_id',$category->category_id)->orderBy('id','DESC')->get(); */
                     
-					
-					$product =  Product::distinct('product_group')
+					if($category->slug == 'premium-gifting') {
+						$product =  Product::select('products.*')
+				->leftjoin('products_saleprice', 'products_saleprice.product_id', '=', 'products.id')
+				->where(function ($query) {
+                    $query->where('products.product_group_default', 1)->where('products.product_group', 1)->orWhere('products.product_group',  null);
+                })->where('products.is_active','1')->where('products.is_approved','1')
+				->whereRaw('products_saleprice.saleprice > 30000')
+				->orderBy('products.id','DESC')->get();
+						
+					}else{
+					$product =  Product::select('products.*')
 						->leftjoin('product_category_styles', 'product_category_styles.product_id', '=', 'products.id')
 						->where('product_category_styles.category_id', $category->category_id)->where('product_category_styles.product_style_id',array($category->id))
 						->where(function ($query) {
                         $query->where('products.product_group_default', 1)->where('products.product_group', 1)->orWhere('products.product_group',  null);
                     })->where('products.is_active','1')->where('products.is_approved','1')->where('products.category_id',$category->category_id)->orderBy('products.id','DESC')->get();
+					
+					}
                    
                 }
                 

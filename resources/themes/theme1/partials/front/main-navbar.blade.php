@@ -24,7 +24,7 @@
             
             
             <div class="top-right-link-search">
-             <ul class="link-search">
+             <ul class="link-search" style="display:none;">
                 <li class="search">
                     {!! Form::open(['method'=>'get', 'action'=>['FrontController@search'], 'role'=>'search', 'class'=>'navbar-form', 'autocomplete'=>'off' ,'onsubmit'=>'submit_button.disabled = true; submit_button.value = "' . __('Please Wait...') . '"; return true;']) !!}
                       <div class="search-box">
@@ -38,9 +38,15 @@
               </ul>
               
               <ul class="top-icon">
-                <li>
+                <li class="cart-count">
                   @if(\Auth::user()) 
-                    <a href="{{url('/products/wishlist')}}"><img src="{{ URL::asset('img/heart.png') }}" alt=""/></a>
+					   @if(\Auth::user()->favouriteProducts()->count() != '0') 
+                    <a href="{{url('/products/wishlist')}}" style="color:goldenrod " ><img src="{{ URL::asset('img/heart.png') }}" alt=""/>
+					<span id="wishlistCount">{{\Auth::user()->favouriteProducts()->count()}}</span></a>
+					@else
+						<a href="{{url('/products/wishlist')}}"><img src="{{ URL::asset('img/heart.png') }}" alt=""/>
+					<span id="wishlistCount">{{\Auth::user()->favouriteProducts()->count()}}</span></a>
+					@endif
                   @else
                     <a href="javascript:void(0)"  data-toggle="modal" data-target="#login-modal"><img src="{{ URL::asset('img/heart.png') }}" alt=""/></a> 
                   @endif
@@ -164,6 +170,7 @@
                           <ul>
                             
                             @foreach($value->categories->sortBy('priority') AS $k=> $val)
+							@if($val->is_active == 1)
                               @php
                               if($val->image!='') {
                                 $file = public_path().'/storage/style/'.$val->image;
@@ -183,6 +190,7 @@
                                       <span>{{ $val->name }}</span>
                                     </a>
                                   </li>
+								  @endif
                               @endforeach
                              
                           </ul>
@@ -191,7 +199,7 @@
                               $shopByMetal = \App\ShopByMetalStone::where('is_active',true)->where('category_id',$value->id)->get();
                               
                          @endphp
-                         @if($value->name != 'Silver Articles'  && $value->name != 'Gems' )
+                         @if($value->name != 'Silver Articles'  )
                             @if(count($shopByMetal) > 0)
                               <div class="menu-box second">
                                 <h5>SHOP BY METAL & STONE </h5>
@@ -288,7 +296,7 @@
                 <li><a href="{{ route('front.catalog') }}">Catalog Order</a></li>
           </ul>
             @if(config('settings.contact_number'))
-              <span class="call-no"><i class="fa fa-phone"></i> {{ config('settings.contact_number') }}</span>
+              <span class="call-no"><a target="_blank" style="color:white;" href="https://api.whatsapp.com/send?phone=919111222818&amp;text=Hello"><img src="{{ URL::asset('img/whatsapp.svg') }} " style="width:20px;" alt=""/> 9111222818</a></span>
             @endif
         </div>      
      </div>
@@ -349,7 +357,7 @@
 
               <div class="off-canvas-inner">
                   <!-- search box start -->
-                  <div class="search-box-offcanvas">
+                  <div class="search-box-offcanvas" style="display:none;">
                   {!! Form::open(['method'=>'get', 'action'=>['FrontController@search'], 'role'=>'search', 'class'=>'navbar-form', 'autocomplete'=>'off' ,'onsubmit'=>'submit_button.disabled = true; submit_button.value = "' . __('Please Wait...') . '"; return true;']) !!}
                     {!! Form::text('keyword', null, ['class'=>'search-keyword' ,'placeholder'=>__('Enter Search...'), 'required', 'autofocus']) !!}
                     <button type="submit" name="submit_button" class="search-btn"><img src="{{ URL::asset('img/search-icon.png') }}" alt=""/></button>
@@ -670,7 +678,7 @@
           </div>
           <div class="forgot-link">
             <!-- <a href="{{ route('password.request') }}">@lang('Forgot Your Password?')</a> -->
-            <a href="javascript:void(0)" data-toggle="modal" data-dismiss="modal" data-target="#forgot-modal">@lang('Forgot Password?')</a>
+            <!--<a href="javascript:void(0)" data-toggle="modal" data-dismiss="modal" data-target="#forgot-modal">@lang('Forgot Password?')</a>-->
             <p>Don't have an account with us? <a href="javascript:void(0)" data-dismiss="modal" data-toggle="modal" data-target="#register-modal">@lang('Sign Up')</a></p>
           </div>
         </form>
@@ -766,7 +774,7 @@
          <input type="hidden" name="is_term_service" id="is_term_service" value="0">  
            
           <div class="form-group input-group{{ $errors->has('name') ? ' has-error' : '' }}">
-            <input type="text" class="form-control" id="name" name="name" value="{{ old('name') }}" required placeholder="@lang('Your Name')"/>
+            <input type="text" class="form-control" id="name" name="name" value="{{ old('name') }}" required placeholder="@lang('Your Name*')"/>
             @if ($errors->has('name'))
                 <span class="help-block">
                     <strong class="text-danger">
@@ -779,7 +787,7 @@
           
           <div class="form-group input-group{{ $errors->has('phone') ? ' has-error' : '' }}">
           
-            <input type="text" class="form-control" id="phone" name="phone" value="{{ old('phone') }}" required placeholder="@lang('Your Mobile No.')"/>
+            <input type="text" class="form-control" id="phone" name="phone" value="{{ old('phone') }}" required placeholder="@lang('Your Mobile No.*')"/>
             @if ($errors->has('phone'))
                 <span class="help-block">
                     <strong class="text-danger">
@@ -806,7 +814,7 @@
            
           <div class="form-group input-group{{ $errors->has('password') ? ' has-error' : '' }}">
               <input required type="password" id="password" name="password" class="form-control"
-                     placeholder="@lang('Enter Password')" required>
+                     placeholder="@lang('Enter Password*')" required>
                      @if ($errors->has('password'))
                   <span class="help-block">
                       <strong class="text-danger">
@@ -818,7 +826,7 @@
           </div>
           
           <div class="form-group input-group{{ $errors->has('password') ? ' has-error' : '' }}">
-              <input placeholder="@lang('Retype Password')" type="password" class="form-control" id="password_confirmation" name="password_confirmation" required>
+              <input placeholder="@lang('Retype Password*')" type="password" class="form-control" id="password_confirmation" name="password_confirmation" required>
           </div>
           
           <div class="form-group">
@@ -1025,6 +1033,29 @@
   </div>
 </div>
 
+<!-- congrats model-->
+<div class="modal fade login-register congrats" id="congrats" tabindex="-1" role="dialog" aria-labelledby="verify_otpTitle" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="login-modalTitle" style="font-size:28px;">Congratulations</h5>
+        <button type="button" class="close closeCongrats " data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <h5 style="text-align:center">Welcome to JewelNidhi</h5><br>
+		<div>You just got a <span style="font-weight:bold;font-size:16px;">WELCOME BONUS</span> of <span style="color:#DAA520; font-size:20px; font-weight:bold;">Rs.250/-</span>. Redeem it on your purchase.</div><br>
+		<div class="form-group">
+        <button id="close_congrats" type="button"  class="btn btn-primary">@lang('Okay')</button>
+		</div>
+      </div>
+     
+    </div>
+  </div>
+</div>
+
+
 <!-- forgot modal -->
 <div class="modal fade login-register" id="forgot-modal" tabindex="-1" role="dialog" aria-labelledby="login-modalTitle" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered" role="document">
@@ -1089,14 +1120,22 @@
             $("#termconditionmsg").hide();
             $("#VerifyMsg").show();
             $("#VerifyMsg").html(data.msg);
-            setTimeout(function() {
+            /* setTimeout(function() {
               $("#VerifyMsg").slideUp();
 			  location.reload();
-              }, 3000);
-               
+              }, 3000); */
+			  $(".verify_otp").modal('hide');
+               $(".congrats").modal('show');
           }
         }
       });
+
+    });
+	$("#close_congrats, .closeCongrats").on("click",function() {
+
+     location.reload();
+            
+               
 
     });
   });

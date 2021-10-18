@@ -434,6 +434,9 @@ Route::group(['middleware' => 'web'], function() {
                         
                         // verify otp
                         Route::post('/verify_otp', 'Auth\RegisterController@verifyOtp')->name('verify_otp');
+						Route::post('/check_user', 'Auth\ForgotPasswordController@checkUser')->name('check_user');
+						Route::post('/verify_forgot_otp', 'Auth\ForgotPasswordController@verifyForgotOtp')->name('verify_forgot_otp');
+						Route::post('/change_password', 'Auth\ForgotPasswordController@changePassword')->name('change_password');
                         
                         // Front Catalog Route
                     
@@ -490,6 +493,8 @@ Route::group(['middleware' => 'web'], function() {
                         Route::resource('/cart', 'FrontCartController', ['except' => [
                         'create', 'store', 'show', 'edit'
                         ]]);
+						Route::get('/becategory/{slug}', 'FrontCartController@becategory')->name('cart.becategory');
+						Route::post('/beprice_sorting', 'FrontCartController@beajaxSortingPrice')->name('beprice_sorting');
                         Route::get('/cart/ajax','FrontCartController@ajaxCartData');
                         Route::get('/cart/refreshCartPage','FrontCartController@refreshCartPage');
                         Route::patch('/cart/add/{id}', 'FrontCartController@add')->name('cart.add');

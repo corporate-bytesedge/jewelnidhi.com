@@ -16,8 +16,8 @@
 @section('meta-tags-og')
     <meta property="og:url" content="{{url()->current()}}" />
     <meta property="og:type" content="website" />
-    <meta property="og:title" content="{{config('custom.meta_title') ? config('custom.meta_title') : config('app.name')}}" />
-    <meta property="og:description" content="{{config('custom.meta_description')}}" />
+    <meta property="og:title" content="JewelNidhi" />
+    <meta property="og:description" content="Jewelnidhi | Leaders in customized jewellery, 100%BIS Hallmark gold Jewellery." />
     <meta property="og:image" content="{{url('/img/'.config('settings.site_logo'))}}" />
 @endsection
 
@@ -112,7 +112,7 @@
             @include('partials.front.left-right-bottom-banner', ['middleBanner' => $middleBanner])
         @endif
         
-        @include('partials.front.instagram-stories')
+       
         
         @if(!empty($testimonials))
            @include('partials.front.testimonials')

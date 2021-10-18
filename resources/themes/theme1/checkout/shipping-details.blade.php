@@ -245,7 +245,8 @@
 
             
           var options = {
-              "key": "rzp_test_UxeztFnoqK6P09",
+              //"key": "rzp_test_UxeztFnoqK6P09",
+              "key": "rzp_live_Sjd1aEzhmFXcR1",
               "amount": total+'00', // Example: 2000 paise = INR 20
               "image": "http://jewelnidhi.com/img/logo_new.gif",// COMPANY LOGO
               "callback_url": "{{ route('razorpay.payment') }}",
@@ -693,7 +694,7 @@
                             <input type="checkbox" class="custom-control-input" id="wallet_balance" value=""  name="wallet_balance">
                             
                             <label class="custom-control-label" for="wallet_balance">
-                            <h6>Wallet Balance</h6>
+                            <h6>Welcome Bonus</h6>
                             <span> Available Balance &#8377;{{ \Auth::user()->wallet_balance }} 
                             @php 
                              

@@ -21,6 +21,7 @@ var addWishlist;
 var removeWishlist;
 
   var page = 1;
+  var latestFilter = "";
   var didScroll = false;
   $(window).scroll(function() {
     didScroll = true;
@@ -57,7 +58,152 @@ var removeWishlist;
   
 
   function loadMoreData(page) {
+	  if(latestFilter == 'sort'){
+		  $.ajax({
       
+        url: "{{ route('front.price_sorting') }}",
+        type: "post",
+        data:{value:$("#priceSorting").val(),slug:$("#priceSorting").data('slug'),price_filter:$(".priceFilter").val(),gender_sorting:$("#genderFilter").val(),page:page},
+        beforeSend: function()
+        {
+            $('.ajax-load').show();
+        }
+    }).done(function(data) {
+      
+      $('[data-toggle="tooltip"]').tooltip();
+        if(data.html == " "){
+            $('.ajax-load').html("No more records found");
+            return;
+        }
+        $('.ajax-load').hide();
+         $("#ajaxcontentProduct").append(data.html);
+        $('[data-toggle="tooltip"]').tooltip();
+        
+        
+    }).fail(function(jqXHR, ajaxOptions, thrownError) {
+          //alert('server not responding...');
+    });
+	  }else if(latestFilter == 'price'){
+		  $.ajax({
+      
+        url: "{{ route('front.price_filter') }}",
+        type: "post",
+        data:{value:$(".priceFilter").val(),slug:$(".priceFilter").data('slug'),price:$(".priceFilter").find(':selected').attr('data-price'),price_sorting:$("#priceSorting").val(),gender_sorting:$("#genderFilter").val(),page:page },
+        beforeSend: function()
+        {
+            $('.ajax-load').show();
+        }
+    }).done(function(data) {
+      
+      $('[data-toggle="tooltip"]').tooltip();
+        if(data.html == " "){
+            $('.ajax-load').html("No more records found");
+            return;
+        }
+        $('.ajax-load').hide();
+         $("#ajaxcontentProduct").append(data.html);
+        $('[data-toggle="tooltip"]').tooltip();
+        
+    }).fail(function(jqXHR, ajaxOptions, thrownError) {
+          //alert('server not responding...');
+    });
+	  }else if(latestFilter == 'metal'){
+		  $.ajax({
+      
+        url: "{{ route('front.metal_filter') }}",
+        type: "post",
+        data:{category_id:$("#metalFilter").val(),slug:$("#metalFilter").data('slug'),metal:$("#metalFilter").find(':selected').attr('data-metal'),page:page },
+        beforeSend: function()
+        {
+            $('.ajax-load').show();
+        }
+    }).done(function(data) {
+      
+      $('[data-toggle="tooltip"]').tooltip();
+        if(data.html == " "){
+            $('.ajax-load').html("No more records found");
+            return;
+        }
+        $('.ajax-load').hide();
+         $("#ajaxcontentProduct").append(data.html);
+        $('[data-toggle="tooltip"]').tooltip();
+        
+    }).fail(function(jqXHR, ajaxOptions, thrownError) {
+          //alert('server not responding...');
+    });
+	  }else if(latestFilter == 'type'){
+		  $.ajax({
+      
+        url: "{{ route('front.type_filter') }}",
+        type: "post",
+        data:{type:$("#typeFilter").val(),slug:$("#typeFilter").data('slug'),attr:$("#typeFilter").data('attr'),page:page },
+        beforeSend: function()
+        {
+            $('.ajax-load').show();
+        }
+    }).done(function(data) {
+      
+      $('[data-toggle="tooltip"]').tooltip();
+        if(data.html == " "){
+            $('.ajax-load').html("No more records found");
+            return;
+        }
+        $('.ajax-load').hide();
+         $("#ajaxcontentProduct").append(data.html);
+        $('[data-toggle="tooltip"]').tooltip();
+        
+    }).fail(function(jqXHR, ajaxOptions, thrownError) {
+          //alert('server not responding...');
+    });
+	  }else if(latestFilter == 'purity'){
+		  $.ajax({
+      
+        url: "{{ route('front.purity_filter') }}",
+        type: "post",
+        data:{value:$("#purityFilter").val(),slug:$("#purityFilter").data('slug'),page:page },
+        beforeSend: function()
+        {
+            $('.ajax-load').show();
+        }
+    }).done(function(data) {
+      
+      $('[data-toggle="tooltip"]').tooltip();
+        if(data.html == " "){
+            $('.ajax-load').html("No more records found");
+            return;
+        }
+        $('.ajax-load').hide();
+         $("#ajaxcontentProduct").append(data.html);
+        $('[data-toggle="tooltip"]').tooltip();
+        
+    }).fail(function(jqXHR, ajaxOptions, thrownError) {
+          //alert('server not responding...');
+    });
+	  }else if(latestFilter == 'gender'){
+		  $.ajax({
+      
+        url: "{{ route('front.gender_filter') }}",
+        type: "post",
+        data:{value:$("#genderFilter").val(),slug:$("#genderFilter").data('slug'),price:$(".priceFilter").val(),price_sorting:$("#priceSorting").val(),page:page },
+        beforeSend: function()
+        {
+            $('.ajax-load').show();
+        }
+    }).done(function(data) {
+      
+      $('[data-toggle="tooltip"]').tooltip();
+        if(data.html == " "){
+            $('.ajax-load').html("No more records found");
+            return;
+        }
+        $('.ajax-load').hide();
+         $("#ajaxcontentProduct").append(data.html);
+        $('[data-toggle="tooltip"]').tooltip();
+        
+    }).fail(function(jqXHR, ajaxOptions, thrownError) {
+          //alert('server not responding...');
+    });
+	  }else{
     $.ajax({
       
         url: '?page=' + page,
@@ -93,6 +239,7 @@ var removeWishlist;
           //alert('server not responding...');
     });
   }
+  }
 
     
   jQuery(document).ready(function() {
@@ -107,8 +254,7 @@ var removeWishlist;
     });
     $(".priceFilter").on("change",function() {
 
-        
-         
+        latestFilter = "price";
         $.ajax({
           type:"POST",
           url:"{{ route('front.price_filter') }}",
@@ -117,14 +263,16 @@ var removeWishlist;
             // Show image container
             $("#contentProduct").hide();
             $("#ajaxcontentProduct").hide();
-            $("#loader").show();
+            $("#loader").show(); 
           },
           success:function(data) {
             $("#loader").hide(); 
             $("#ajaxcontentProduct").show();
-            $("#ajaxcontentProduct").html(data);
+            $("#ajaxcontentProduct").html(data.html);
             $('[data-toggle="tooltip"]').tooltip();
             gridFunction();
+			$('#page').val(1);
+            $('#max_page').val(Math.ceil(data.max_page));
           } 
         });
      
@@ -132,12 +280,14 @@ var removeWishlist;
     });
 
     $("#priceSorting").on("change",function() {
+		
       
       if($(this).val()!='') {
+		  latestFilter = "sort";
         $.ajax({
           type:"POST",
           url:"{{ route('front.price_sorting') }}",
-          data:{value:$(this).val(),slug:$(this).data('slug'),price_filter:$(".priceFilter").val(),gender_sorting:$("#genderFilter").val()},
+          data:{value:$(this).val(),slug:$(this).data('slug'),price_filter:$(".priceFilter").val(),gender_sorting:$("#genderFilter").val(),page:''},
           beforeSend: function() {
             // Show image container
             $("#contentProduct").hide();
@@ -149,11 +299,11 @@ var removeWishlist;
             
             $("#loader").hide(); 
             $("#ajaxcontentProduct").show();
-            $("#ajaxcontentProduct").html(data);
+            $("#ajaxcontentProduct").html(data.html);
             $('[data-toggle="tooltip"]').tooltip();
             gridFunction();
-           
-            
+			$('#page').val(1);
+            $('#max_page').val(Math.ceil(data.max_page));
           } 
         });
       }
@@ -197,7 +347,7 @@ var removeWishlist;
 
     $("#metalFilter").on("change",function() {
          
-      
+      latestFilter = "metal";
         $.ajax({
           type:"POST",
           url:"{{ route('front.metal_filter') }}",
@@ -213,9 +363,11 @@ var removeWishlist;
             
             $("#loader").hide(); 
             $("#ajaxcontentProduct").show();
-            $("#ajaxcontentProduct").html(data);
+            $("#ajaxcontentProduct").html(data.html);
             $('[data-toggle="tooltip"]').tooltip();
             gridFunction();
+			$('#page').val(1);
+            $('#max_page').val(Math.ceil(data.max_page));
           } 
         });
       
@@ -223,7 +375,7 @@ var removeWishlist;
     });
     $("#typeFilter").on("change",function() {
          
-      
+      latestFilter = "type";
          $.ajax({
            type:"POST",
            url:"{{ route('front.type_filter') }}",
@@ -239,9 +391,11 @@ var removeWishlist;
              
              $("#loader").hide(); 
              $("#ajaxcontentProduct").show();
-             $("#ajaxcontentProduct").html(data);
+             $("#ajaxcontentProduct").html(data.html);
              $('[data-toggle="tooltip"]').tooltip();
              gridFunction();
+			 $('#page').val(1);
+            $('#max_page').val(Math.ceil(data.max_page));
            } 
          });
        
@@ -253,7 +407,7 @@ var removeWishlist;
 
     $("#purityFilter").on("change",function() {
          
-          
+          latestFilter = "purity";
          $.ajax({
            type:"POST",
            url:"{{ route('front.purity_filter') }}",
@@ -269,9 +423,11 @@ var removeWishlist;
              
              $("#loader").hide(); 
              $("#ajaxcontentProduct").show();
-             $("#ajaxcontentProduct").html(data);
+             $("#ajaxcontentProduct").html(data.html);
              $('[data-toggle="tooltip"]').tooltip();
              gridFunction(); 
+			 $('#page').val(1);
+            $('#max_page').val(Math.ceil(data.max_page));
            } 
          });
         
@@ -281,7 +437,7 @@ var removeWishlist;
 
     $("#genderFilter").on("change",function() {
          
-          
+          latestFilter = "gender";
            $.ajax({
              type:"POST",
              url:"{{ route('front.gender_filter') }}",
@@ -297,9 +453,11 @@ var removeWishlist;
                
                $("#loader").hide(); 
                $("#ajaxcontentProduct").show();
-               $("#ajaxcontentProduct").html(data);
+               $("#ajaxcontentProduct").html(data.html);
                $('[data-toggle="tooltip"]').tooltip();
                gridFunction();
+			   $('#page').val(1);
+            $('#max_page').val(Math.ceil(data.max_page));
              } 
            });
           
@@ -308,7 +466,7 @@ var removeWishlist;
 
        $("#offerFilter").on("change",function() {
          
-          
+          latestFilter = "offer";
          $.ajax({
            type:"POST",
            url:"{{ route('front.offer_filter') }}",
@@ -357,6 +515,8 @@ var removeWishlist;
              $("#removeBtn_"+id).removeAttr('hidden');
              $("#removeBtn_"+id).show();
               $("#addBtn_"+id).hide();
+			  var wishlistCount = parseInt($("#wishlistCount").text());
+			$("#wishlistCount").text(wishlistCount + 1);
              
            } 
          });
@@ -386,7 +546,8 @@ var removeWishlist;
               $("#removeBtn_"+id).hide();
               $("#addBtn_"+id).removeAttr('hidden');
               $("#addBtn_"+id).show();
-             
+             var wishlistCount = parseInt($("#wishlistCount").text());
+			$("#wishlistCount").text(wishlistCount - 1);
              
            } 
          });
@@ -689,7 +850,7 @@ if(isset($category)) {
           <div class="block">
             <div class="box">
               <select class="nice-select" data-slug="{{ Request::segment(2) }}" id="priceSorting">
-              
+              <option value="" selected disabled hidden >Select here</option>
                 <option value="asc" >Price (Low To High)</option>
                 <option value="desc" >Price (High To Low)</option>
                 <option value ="all" >Relevance</option>

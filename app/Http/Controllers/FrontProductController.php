@@ -126,16 +126,24 @@ class FrontProductController extends Controller
 		
 		
 		
-		$similarProduct = Product::whereHas('product_category_styles', function($query) use($product) {
+		/* $similarProduct = Product::whereHas('product_category_styles', function($query) use($product) {
 			$query->where('category_id', $product->category_id)->where('product_style_id', $product->product_category_styles[0]->product_style_id);
-		})->whereNotIn('id', [$product->id])->whereRaw('(`product_discount` is null  && `old_price` >= '.$minProductPrice.' && `old_price` <= '.$maxProductPrice.' ) or (`product_discount` is not null  && `new_price` >= '.$minProductPrice.' &&  `new_price` <= '.$maxProductPrice.')')->where('category_id', $product->category_id)->where('is_active', 1)->get();
+		})->whereNotIn('id', [$product->id])->whereRaw('(`product_discount` is null  && `old_price` >= '.$minProductPrice.' && `old_price` <= '.$maxProductPrice.' ) or (`product_discount` is not null  && `new_price` >= '.$minProductPrice.' &&  `new_price` <= '.$maxProductPrice.')')->where('category_id', $product->category_id)->where('is_active', 1)->get(); */
+		
+		
+		$similarProduct =  Product::select('products.*')
+				->leftjoin('product_category_styles', 'product_category_styles.product_id', '=', 'products.id')
+				->leftjoin('products_saleprice', 'products_saleprice.product_id', '=', 'products.id')
+				->where('product_category_styles.category_id', $product->category_id)
+				->where('product_category_styles.product_style_id', $product->product_category_styles[0]->product_style_id)
+				->where('products.is_active','1')->whereNotIn('products.id', [$product->id])
+				->whereRaw('products_saleprice.saleprice >= '.$minProductPrice.' && products_saleprice.saleprice <= '.$maxProductPrice.' ')
+				->where('products.category_id',$product->category_id)->get();
 		  
-		// $similarProduct = Product::whereHas('product_category_styles', function($query) use($product) {
-		// 	$query->where('category_id', $product->category_id)->where('product_style_id', $product->product_category_styles[0]->product_style_id);
-		// })->where('category_id', $product->category_id)->whereNotIn('id', [$product->id])->whereRaw('old_price >= '.$lesdProductPrice.'')->whereRaw('old_price <= '.$productPrice.'')->where('is_active', 1)->get();
+		
 		  //$debugQry = \DB::getQueryLog();
 		//print_r($debugQry);
-		// return view('front.product', compact('product', 'variants', 'related_products_category_brand', 'comparision_products', 'comparision_group_types', 'sections_above_deal_slider', 'sections_below_deal_slider', 'sections_above_footer','groupSizeArr','groupPurityArr','similarProduct'));
+		
 		return view('front.product', compact('product', 'variants',   'sections_above_deal_slider', 'sections_below_deal_slider', 'sections_above_footer','groupSizeArr','groupPurityArr','similarProduct','category'));
 	}
 

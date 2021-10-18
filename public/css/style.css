@@ -2158,7 +2158,7 @@ footer .mobile-follow {
   padding: 8px;
   font-size: 14px;
   color: #DAA520;
-  font-family: apple_chanceryitalic;
+  /* font-family: apple_chanceryitalic; */
 }
 .product-detail-page .product-description .product-desc p a {
   color: #DAA520;
@@ -2184,7 +2184,7 @@ footer .mobile-follow {
   border: none;
   border-bottom: 1px solid #dee2e6;
   font-size: 13px;
-  font-family: cursive;
+  /* font-family: cursive; */
 }
 .product-detail-page .product-description .jewel-promise {
   color: #000;

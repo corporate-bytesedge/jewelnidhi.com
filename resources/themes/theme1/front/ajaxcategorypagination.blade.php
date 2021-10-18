@@ -85,7 +85,7 @@
                                   @endphp
 
                                     
-                                        <a href="javascript:void(0);" @php echo $selected == true ? '' :'hidden' @endphp  id="removeBtn_{{ $val->id }}" data-toggle="tooltip" style="color:red " onclick="removeWishlist('{{ $val->id }}')"   data-placement="left" title="Remove from your wishlist">
+                                        <a href="javascript:void(0);" @php echo $selected == true ? '' :'hidden' @endphp  id="removeBtn_{{ $val->id }}" data-toggle="tooltip" style="color:goldenrod " onclick="removeWishlist('{{ $val->id }}')"   data-placement="left" title="Remove from your wishlist">
                                           <i class="fa fa-heart"></i>
                                       </a>
                                    
