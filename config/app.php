@@ -3,7 +3,7 @@
   'name' => 'jewelnidhi.com',
   'env' => 'local',
   'debug' => false,
-  'url' => '/jn/jewelnidhi.com',
+  'url' => '/newjn/jewelnidhi.com',
   'timezone' => 'UTC',
   'locale' => 'en',
   'fallback_locale' => 'en',
