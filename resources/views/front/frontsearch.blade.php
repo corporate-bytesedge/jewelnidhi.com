@@ -454,7 +454,7 @@ var removeWishlist;
   <div class="container">
   <div class="category-head">
       <h4 style="color:#D3A012">Search results for " {{ ucwords(request()->query('keyword')) }} "</h4>
-      <span>{{ count($allProduct) }} Designs</span>
+      <span>{{ count($allProduct) }} Designs</span>{{ $product_max_price }} {{ $product_min_price }}
     </div>
      
       @if(!empty($category))
@@ -490,7 +490,7 @@ var removeWishlist;
                       @endif
                       </select>
               @else
-              <select class="nice-select priceFilter" data-slug="{{ request()->get('keyword') }}" >
+		  <select class="nice-select priceFilter" data-slug="{{ request()->get('keyword') }}" >
                 <option data-price="all" value="all" >PRICE</option>
                 
                     
@@ -535,9 +535,7 @@ var removeWishlist;
                 
                 @if(!empty($metal))
                   @foreach($metal AS $ke=> $value)
-                    @if($ke==0)
-                    <option data-metal="{{ $value->category->name }}" value="{{ $value->category->id }}">{{ $value->category->name }} ( {{ count($metal) }} )  </option>
-                    @endif
+                    <option data-metal="{{ $value['name'] }}" value="{{ $value['id'] }}">{{ $value['name'] }} ( {{ $value['count'] }} )  </option>
                   @endforeach
                 @endif
                 
@@ -575,7 +573,7 @@ var removeWishlist;
           <div class="block">
             <div class="box">
               <select class="nice-select" data-slug="{{ request()->get('keyword') }}" id="priceSorting">
-                
+                <option value="" selected disabled hidden >Select here</option>
                 <option value="asc" >Price (Low To High)</option>
                 <option value="desc" >Price (High To Low)</option>
                 <option value ="all" >Relevance</option>

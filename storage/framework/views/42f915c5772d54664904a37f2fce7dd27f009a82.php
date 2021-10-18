@@ -1,2 +1,0 @@
- <?php $__env->startSection('content'); ?> <div class="thanks-page"> <div class="container"> <div class="text-center"> <i class="fa fa-check-circle"></i> <h1>Thank You</h1> <h5>Your order was completed successfully.</h5> <a href="<?php echo e(url('/')); ?>">Back to Home</a> </div> </div> </div> <?php $__env->stopSection(); ?>
-<?php echo $__env->make('layouts.front', array_except(get_defined_vars(), array('__data', '__path')))->render(); ?>

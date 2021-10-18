@@ -127,23 +127,23 @@
             <ul class="social-icon">
              
               @if(config('settings.social_link_instagram_enable') == '1')
-                <li><a target="_blank" href="{{ config('settings.social_link_instagram') }}"><img src="{{ URL::asset('img/insta-icon.png') }} " alt=""/></a></li>
+                <li><a target="_blank" href="{{ config('settings.social_link_instagram') }}"><img src="{{ URL::asset('img/instagram.svg') }} " style="width:24px;" alt=""/></a></li>
               @endif
               @if(config('settings.social_link_facebook_enable') == '1')
-                <li><a target="_blank" href="{{ config('settings.social_link_facebook') }}"><img src="{{ URL::asset('img/facebook.png') }}" alt=""/></a></li>
+                <li><a target="_blank" href="{{ config('settings.social_link_facebook') }}"><img src="{{ URL::asset('img/facebook.svg') }}" style="width:24px;" alt=""/></a></li>
               @endif
               @if(config('settings.social_link_twitter_enable') == '1')
-                <li><a target="_blank" href="{{ config('settings.social_link_twitter') }}"><img src="{{ URL::asset('img/twitter.png') }} " alt=""/></a></li>
+                <li><a target="_blank" href="{{ config('settings.social_link_twitter') }}"><img src="{{ URL::asset('img/twitter.svg') }} " style="width:24px;" alt=""/></a></li>
               @endif
               @if(config('settings.social_link_youtube_enable') == '1')
-                <li><a target="_blank" href="{{ config('settings.social_link_youtube') }}"><img src="{{ URL::asset('img/youtube.png') }}" alt=""/></a></li>
+                <li><a target="_blank" href="{{ config('settings.social_link_youtube') }}"><img src="{{ URL::asset('img/youtube.svg') }}" style="width:24px;" alt=""/></a></li>
               @endif
               
               @if(config('settings.social_link_pintrest_enable') == '1')
-                <li><a target="_blank" href="{{ config('settings.social_link_pintrest') }}"><i class="fa fa-pinterest-p"></i></a></li>
+                <li><a target="_blank" href="{{ config('settings.social_link_pintrest') }}"><img src="{{ URL::asset('img/pinterest.svg') }} " style="width:24px;" alt=""/></a></li>
               @endif
               @if(config('settings.social_link_whatsapp_enable') == '1')
-                <li><a target="_blank" href="#"><i class="fa fa-whatsapp"></i></a></li>
+                <li><a target="_blank" href="https://api.whatsapp.com/send?phone=919111222818&amp;text=Hello"><img src="{{ URL::asset('img/whatsapp.svg') }} " style="width:24px;" alt=""/></a></li>
               @endif
             </ul>
           </div>
@@ -154,23 +154,23 @@
             <ul class="social-icon">
              
               @if(config('settings.social_link_instagram_enable') == '1')
-                <li><a target="_blank" href="{{ config('settings.social_link_instagram') }}"><img src="{{ URL::asset('img/insta-icon.png') }} " alt=""/></a></li>
+                <li><a target="_blank" href="{{ config('settings.social_link_instagram') }}"><img src="{{ URL::asset('img/instagram.svg') }} " style="width:24px;" alt=""/></a></li>
               @endif
               @if(config('settings.social_link_facebook_enable') == '1')
-                <li><a target="_blank" href="{{ config('settings.social_link_facebook') }}"><img src="{{ URL::asset('img/facebook.png') }}" alt=""/></a></li>
+                <li><a target="_blank" href="{{ config('settings.social_link_facebook') }}"><img src="{{ URL::asset('img/facebook.svg') }}" style="width:24px;" alt=""/></a></li>
               @endif
               @if(config('settings.social_link_twitter_enable') == '1')
-                <li><a target="_blank" href="{{ config('settings.social_link_twitter') }}"><img src="{{ URL::asset('img/twitter.png') }} " alt=""/></a></li>
+                <li><a target="_blank" href="{{ config('settings.social_link_twitter') }}"><img src="{{ URL::asset('img/twitter.svg') }} " style="width:24px;" alt=""/></a></li>
               @endif
               @if(config('settings.social_link_youtube_enable') == '1')
-                <li><a target="_blank" href="{{ config('settings.social_link_youtube') }}"><img src="{{ URL::asset('img/youtube.png') }}" alt=""/></a></li>
+                <li><a target="_blank" href="{{ config('settings.social_link_youtube') }}"><img src="{{ URL::asset('img/youtube.svg') }}" style="width:24px;" alt=""/></a></li>
               @endif
               
               @if(config('settings.social_link_pintrest_enable') == '1')
-                <li><a target="_blank" href="{{ config('settings.social_link_pintrest') }}"><i class="fa fa-pinterest-p"></i></a></li>
+                <li><a target="_blank" href="{{ config('settings.social_link_pintrest') }}"><img src="{{ URL::asset('img/pinterest.svg') }} " style="width:24px;" alt=""/></a></li>
               @endif
               @if(config('settings.social_link_whatsapp_enable') == '1')
-                <li><a target="_blank" href="#"><i class="fa fa-whatsapp"></i></a></li>
+                <li><a target="_blank" href="https://api.whatsapp.com/send?phone=919111222818&amp;text=Hello"><img src="{{ URL::asset('img/whatsapp.svg') }} " style="width:24px;" alt=""/></a></li>
               @endif
             </ul>
           </div>

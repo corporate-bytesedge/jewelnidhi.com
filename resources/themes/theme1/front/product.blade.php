@@ -210,7 +210,7 @@
                         }
                     @endphp
                     
-                      <a href="javascript:void(0);" @php echo $selected1 == true ? '' :'hidden' @endphp  id="removeProductBtn_{{ $product->id }}" data-toggle="tooltip" style="color:red " onclick="removeProductWishlist('{{ $product->id }}')"   data-placement="left" title="Remove from your wishlist">
+                      <a href="javascript:void(0);" @php echo $selected1 == true ? '' :'hidden' @endphp  id="removeProductBtn_{{ $product->id }}" data-toggle="tooltip" style="color:goldenrod " onclick="removeProductWishlist('{{ $product->id }}')"   data-placement="left" title="Remove from your wishlist">
                           <i class="fa fa-heart"></i>
                       </a>
                       
@@ -625,7 +625,7 @@
              <ul>
                <li>
                  <i class="fa fa-sign-out"></i>
-                 <span>30-Day Money Back</span>
+                 <span>15-Day Money Back</span>
                </li>
                <li>
                 <i class="fa fa-support"></i>
@@ -690,8 +690,7 @@
             {{ Form::close() }}
          </div>
          <div class="d-f-detail mt-3">
-            <h6>Need additional information about the product?</h6>
-            <p>Please contact our customer care executives @if(config('settings.contact_number')){{ '@'.config('settings.contact_number') }}@endif, @if(config('settings.contact_email')) <a href="mailto:{{ config('settings.contact_email') }}">{{ config('settings.contact_email') }}</a> @endif</p>
+            <p>Redeem a <span style="font-weight:bold;font-size:16px;">WELCOME BONUS</span> of <span style="color:#DAA520; font-size:20px; font-weight:bold;">Rs.250/-</span> on your purchase.</p>
           </div>
        </div>
 
@@ -794,7 +793,7 @@
                                     
                                 @endphp
                                   
-                                  <a href="javascript:void(0);" @php echo $selected == true ? '' :'hidden' @endphp data-toggle="tooltip" id="removeBtn_{{ $val->id }}" style="color:red " onclick="removeWishlist('{{ $val->id }}')"   data-placement="left" title="Removed from your wishlist">
+                                  <a href="javascript:void(0);" @php echo $selected == true ? '' :'hidden' @endphp data-toggle="tooltip" id="removeBtn_{{ $val->id }}" style="color:goldenrod " onclick="removeWishlist('{{ $val->id }}')"   data-placement="left" title="Removed from your wishlist">
                                         <i class="fa fa-heart"></i>
                                     </a>
                                   
@@ -1430,7 +1429,8 @@
                           $("#removeProductBtn_"+id).removeAttr('hidden');
                           $("#removeProductBtn_"+id).show();
                           $("#addProductBtn_"+id).hide();
-                          
+                          var wishlistCount = parseInt($("#wishlistCount").text());
+							$("#wishlistCount").text(wishlistCount + 1);
                         } 
                       });
                 }
@@ -1451,6 +1451,8 @@
                       $("#removeProductBtn_"+id).hide();
                       $("#addProductBtn_"+id).removeAttr('hidden');
                       $("#addProductBtn_"+id).show();
+					  var wishlistCount = parseInt($("#wishlistCount").text());
+					  $("#wishlistCount").text(wishlistCount - 1);
                       } 
                     });
                   }
@@ -1468,7 +1470,8 @@
                           $("#removeBtn_"+id).removeAttr('hidden');
                           $("#removeBtn_"+id).show();
                           $("#addBtn_"+id).hide();
-                          
+                          var wishlistCount = parseInt($("#wishlistCount").text());
+							$("#wishlistCount").text(wishlistCount + 1);
                         } 
                       });
                     
@@ -1491,7 +1494,8 @@
                           $("#removeBtn_"+id).hide();
                           $("#addBtn_"+id).removeAttr('hidden');
                           $("#addBtn_"+id).show();
-                          
+                          var wishlistCount = parseInt($("#wishlistCount").text());
+							$("#wishlistCount").text(wishlistCount - 1);
                         } 
                       });
                   }
